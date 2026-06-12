@@ -1,4 +1,4 @@
-## Projet: Spring MVC framework from scratch 
+## Projet: Spring MVC framework and Web API from scratch 
 ### Github:
 Branche principale: main
 --> Branche sprint_0. (commit et push)
@@ -12,3 +12,10 @@ commit et push --> pull request pour chaque sprint --> merge --> fafana ilay bra
 2 espaces de travail:
 - code source du framework
 - les programmes de test
+
+
+## But Fonctionalite:
+
+**Faire annotation**
+@Controller 
+@Request --> binding parametre --> Model and View methode
