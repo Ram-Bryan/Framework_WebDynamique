@@ -12,4 +12,4 @@ Dans projet de test.
 
 Au moment du RunTime --> azo ilay info
 
-Commetn avoir qu'il y a une annotation dans classe/methode/attribut ?
+Commetn savoir qu'il y a une annotation dans classe/methode/attribut ?
