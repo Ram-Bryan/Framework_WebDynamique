@@ -104,7 +104,6 @@ public class Utils {
         }
     }
 
-    /* */
     public static List<String> classesToString(List<Class<?>> list) {
         List<String> names = new ArrayList<>();
         for (Class<?> c : list) {
