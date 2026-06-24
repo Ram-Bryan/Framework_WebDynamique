@@ -55,48 +55,32 @@ public class Utils {
         return listClasses;
     }
 
-    public static List<UrlMappingModel> getUrlMapping(String packageName) {
-        List<UrlMappingModel> listUrlMapping = new ArrayList<>();
-
-        try {
-
-            List<Class<?>> listClasses = getControllers(packageName);
-            for (Class<?> class1 : listClasses) {
-                List<Method> listMethods = List.of(class1.getMethods());
-                for (Method m : listMethods) {
-                    if (m.isAnnotationPresent(UrlMapping.class)) {
-                        UrlMappingModel map = new UrlMappingModel();
-                        map.setController(class1);
-                        map.setMethod(m);
-                        map.setUrl(m.getAnnotation(UrlMapping.class).url());
-                        listUrlMapping.add(map);
-                    }
-                }
-            }
-
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-
-        return listUrlMapping;
-    }
-
     public static Map<String, UrlMappingModel> buildRoutingTable(String packageName) {
 
         Map<String, UrlMappingModel> routes = new HashMap<>();
 
-        List<UrlMappingModel> mappings = getUrlMapping(packageName);
+        List<Class<?>> controllers = getControllers(packageName);
 
-        for (UrlMappingModel mapping : mappings) {
+        for (Class<?> controller : controllers) {
 
-            String url = mapping.getUrl();
+            for (Method method : controller.getMethods()) {
 
-            if (routes.containsKey(url)) {
-                throw new RuntimeException(
-                        "Duplicate URL mapping detected : " + url);
+                if (!method.isAnnotationPresent(UrlMapping.class)) {
+                    continue;
+                }
+
+                String url = method.getAnnotation(UrlMapping.class).url();
+
+                UrlMappingModel mapping = new UrlMappingModel();
+                mapping.setController(controller);
+                mapping.setMethod(method);
+                mapping.setUrl(url);
+
+                if (routes.putIfAbsent(url, mapping) != null) {
+                    throw new RuntimeException(
+                            "Duplicate URL mapping detected : " + url);
+                }
             }
-
-            routes.put(url, mapping);
         }
 
         return routes;
