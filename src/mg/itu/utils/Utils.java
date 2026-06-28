@@ -10,6 +10,7 @@ import java.util.Map;
 
 import mg.itu.annotation.*;
 import mg.itu.model.UrlMappingModel;
+import mg.itu.model.UrlMethod;
 
 import java.net.URL;
 
@@ -55,9 +56,9 @@ public class Utils {
         return listClasses;
     }
 
-    public static Map<String, UrlMappingModel> buildRoutingTable(String packageName) {
+    public static Map<UrlMethod, UrlMappingModel> buildRoutingTable(String packageName) {
 
-        Map<String, UrlMappingModel> routes = new HashMap<>();
+        Map<UrlMethod, UrlMappingModel> routes = new HashMap<>();
 
         List<Class<?>> controllers = getControllers(packageName);
 
@@ -70,15 +71,18 @@ public class Utils {
                 }
 
                 String url = method.getAnnotation(UrlMapping.class).url();
+                String httpMethod = method.getAnnotation(UrlMapping.class).method().toUpperCase();
+
+                UrlMethod urlMethod = new UrlMethod(url, httpMethod);
 
                 UrlMappingModel mapping = new UrlMappingModel();
                 mapping.setController(controller);
                 mapping.setMethod(method);
                 mapping.setUrl(url);
 
-                if (routes.putIfAbsent(url, mapping) != null) {
+                if (routes.putIfAbsent(urlMethod, mapping) != null) {
                     throw new RuntimeException(
-                            "Duplicate URL mapping detected : " + url);
+                            "Duplicate URL and method mapping detected : " + url + " [" + httpMethod + "]");
                 }
             }
         }
