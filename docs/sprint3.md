@@ -1,5 +1,4 @@
 Sprint3:
-
 Annotation: argumenet optionelle method url,method(get, post)
 Class: urlMethod:
     @Override equals comparer les url
