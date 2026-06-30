@@ -20,9 +20,7 @@ public class FrontControllerServlet extends HttpServlet {
 
         @Override
         public void init() throws ServletException {
-                String packageName = getServletContext().getInitParameter("package.controller");
-                Utils.buildRoutingTable(packageName, routes);
-
+                routes = (Map<UrlMethod, UrlMappingModel>) getServletContext().getAttribute("routes");
         }
 
         private void processRequest(HttpServletRequest request, HttpServletResponse response)
