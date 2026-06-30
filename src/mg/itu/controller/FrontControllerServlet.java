@@ -16,18 +16,13 @@ import mg.itu.utils.Utils;
 
 public class FrontControllerServlet extends HttpServlet {
 
-        public List<String> listControllers = new ArrayList<>();
-        Map<UrlMethod, UrlMappingModel> routes = new HashMap<>();
+        private Map<UrlMethod, UrlMappingModel> routes = new HashMap<>();
 
         @Override
         public void init() throws ServletException {
                 String packageName = getServletContext().getInitParameter("package.controller");
 
-                List<Class<?>> controllers = Utils.getControllers(packageName);
-                listControllers = Utils.classesToString(controllers);
-
-                // urlMappings = Utils.getUrlMapping(packageName);
-                routes = Utils.buildRoutingTable(packageName);
+                Utils.buildRoutingTable(packageName, routes);
 
         }
 
@@ -42,12 +37,6 @@ public class FrontControllerServlet extends HttpServlet {
                 out.println("<h2>FrontController servlet</h2>");
                 out.println("<p><strong>Current URL:</strong> " + urlMain + "</p>");
 
-                out.println("<p><strong>Loaded Controllers:</strong><br/>");
-                for (String class1 : listControllers) {
-                        out.println("- " + class1 + "<br/>");
-                }
-                out.println("</p>");
-
                 String reqMethod = request.getMethod();
                 UrlMethod urlMethod = new UrlMethod(url, reqMethod);
 
@@ -60,43 +49,28 @@ public class FrontControllerServlet extends HttpServlet {
                         out.println("<p><strong>URL Mapping:</strong> " + mapping.getUrl() + " [" + reqMethod
                                         + "]</p>");
 
-                        try {
-                                Object controllerInstance = mapping.getController().getDeclaredConstructor()
-                                                .newInstance();
-                                Object returnValue = mapping.getMethod().invoke(controllerInstance);
-                                if (returnValue instanceof String) {
-                                        out.println("<p><strong>Return value:</strong> " + returnValue + "</p>");
-                                }
-                        } catch (Exception e) {
-                                out.println("<p style='color: red;'><strong>Error executing method:</strong> "
-                                                + e.getMessage() + "</p>");
-                                e.printStackTrace(out);
-                        }
+                       
                         out.println("</div>");
                 } else {
 
                         out.println("<p style='color: red;'><strong>No matching route found for:</strong> " + url + " ["
                                         + reqMethod + "]</p>");
-                        out.println("<p><strong>Available routes and invokes:</strong><br/>");
+                        out.println("<p><strong>Available routes</strong><br/>");
 
                         for (UrlMethod key : routes.keySet()) {
 
                                 try {
                                         UrlMappingModel map = routes.get(key);
-                                        Object controllerInstance = map.getController().getDeclaredConstructor()
-                                                        .newInstance();
-                                        Object returnValue = map.getMethod().invoke(controllerInstance);
 
                                         out.println(
                                                         "- " + key.getUrl() + " [" + key.getMethod() + "] -> " +
                                                                         map.getController().getSimpleName() +
                                                                         "." +
-                                                                        map.getMethod().getName() + " -> " + returnValue
+                                                                        map.getMethod().getName()
                                                                         + "<br/>");
 
                                 } catch (Exception e) {
-                                        out.println("<p style='color: red;'><strong>Error executing method:</strong> "
-                                                        + e.getMessage() + "</p>");
+                                        
                                         e.printStackTrace(out);
                                 }
 

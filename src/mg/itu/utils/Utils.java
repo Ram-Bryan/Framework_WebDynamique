@@ -56,9 +56,7 @@ public class Utils {
         return listClasses;
     }
 
-    public static Map<UrlMethod, UrlMappingModel> buildRoutingTable(String packageName) {
-
-        Map<UrlMethod, UrlMappingModel> routes = new HashMap<>();
+    public static void buildRoutingTable(String packageName, Map<UrlMethod, UrlMappingModel> routes) {
 
         List<Class<?>> controllers = getControllers(packageName);
 
@@ -80,14 +78,15 @@ public class Utils {
                 mapping.setMethod(method);
                 mapping.setUrl(url);
 
-                if (routes.putIfAbsent(urlMethod, mapping) != null) {
+                if (routes.containsKey(urlMethod)) {
                     throw new RuntimeException(
                             "Duplicate URL and method mapping detected : " + url + " [" + httpMethod + "]");
                 }
+
+                routes.put(urlMethod, mapping);
             }
         }
 
-        return routes;
     }
 
     public static List<Class<?>> scanPackage(String packageName) throws Exception {
