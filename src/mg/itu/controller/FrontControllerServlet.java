@@ -21,7 +21,6 @@ public class FrontControllerServlet extends HttpServlet {
         @Override
         public void init() throws ServletException {
                 String packageName = getServletContext().getInitParameter("package.controller");
-
                 Utils.buildRoutingTable(packageName, routes);
 
         }
@@ -49,28 +48,43 @@ public class FrontControllerServlet extends HttpServlet {
                         out.println("<p><strong>URL Mapping:</strong> " + mapping.getUrl() + " [" + reqMethod
                                         + "]</p>");
 
-                       
+                        try {
+                                Object controllerInstance = mapping.getController().getDeclaredConstructor()
+                                                .newInstance();
+                                Object returnValue = mapping.getMethod().invoke(controllerInstance);
+                                if (returnValue instanceof String) {
+                                        out.println("<p><strong>Return value:</strong> " + returnValue + "</p>");
+                                }
+                        } catch (Exception e) {
+                                out.println("<p style='color: red;'><strong>Error executing method:</strong> "
+                                                + e.getMessage() + "</p>");
+                                e.printStackTrace(out);
+                        }
                         out.println("</div>");
                 } else {
 
                         out.println("<p style='color: red;'><strong>No matching route found for:</strong> " + url + " ["
                                         + reqMethod + "]</p>");
-                        out.println("<p><strong>Available routes</strong><br/>");
+                        out.println("<p><strong>Available routes and invokes:</strong><br/>");
 
                         for (UrlMethod key : routes.keySet()) {
 
                                 try {
                                         UrlMappingModel map = routes.get(key);
+                                        Object controllerInstance = map.getController().getDeclaredConstructor()
+                                                        .newInstance();
+                                        Object returnValue = map.getMethod().invoke(controllerInstance);
 
                                         out.println(
                                                         "- " + key.getUrl() + " [" + key.getMethod() + "] -> " +
                                                                         map.getController().getSimpleName() +
                                                                         "." +
-                                                                        map.getMethod().getName()
+                                                                        map.getMethod().getName() + " -> " + returnValue
                                                                         + "<br/>");
 
                                 } catch (Exception e) {
-                                        
+                                        out.println("<p style='color: red;'><strong>Error executing method:</strong> "
+                                                        + e.getMessage() + "</p>");
                                         e.printStackTrace(out);
                                 }
 
