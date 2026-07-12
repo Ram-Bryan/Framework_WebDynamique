@@ -3,62 +3,72 @@ package mg.itu.utils;
 import java.io.File;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
+import java.net.URL;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import mg.itu.annotation.*;
+import mg.itu.annotation.Controller;
+import mg.itu.annotation.UrlMapping;
 import mg.itu.model.UrlMappingModel;
 import mg.itu.model.UrlMethod;
 
-import java.net.URL;
-
 public class Utils {
 
-    public static List<Object> findWithAnnotation(Class<? extends Annotation> annotation, String packageName,
-            String niveau) throws Exception {
-
-        List<Object> objects = new ArrayList<>();
+    public static void findWithAnnotation(
+            Class<? extends Annotation> annotation,
+            String packageName,
+            String niveau,
+            List<Object> objects) throws Exception {
 
         if (niveau.equalsIgnoreCase("class")) {
-            List<Class<?>> listClasses = scanPackage(packageName);
-            for (Class<?> class1 : listClasses) {
-                if (class1.isAnnotationPresent(annotation)) {
-                    objects.add(class1);
+
+            List<Class<?>> listClasses = new ArrayList<>();
+            scanPackage(packageName, listClasses);
+
+            for (Class<?> classe : listClasses) {
+                if (classe.isAnnotationPresent(annotation)) {
+                    objects.add(classe);
                 }
             }
+
         } else if (niveau.equalsIgnoreCase("attribut")) {
 
         } else if (niveau.equalsIgnoreCase("method")) {
 
         } else {
-            throw new Exception("Choose class, attribut, or method");
+            throw new Exception("Choose class, attribut or method");
         }
-
-        return objects;
     }
 
-    public static List<Class<?>> getControllers(String packageName) {
-        List<Class<?>> listClasses = new ArrayList<>();
+    public static void getControllers(String packageName, List<Class<?>> controllers) {
 
         try {
-            List<Object> listObject = findWithAnnotation(Controller.class, packageName, "class");
-            for (Object o : listObject) {
-                if (o instanceof Class<?>) {
-                    listClasses.add((Class<?>) o);
-                }
+
+            List<Object> objects = new ArrayList<>();
+
+            findWithAnnotation(
+                    Controller.class,
+                    packageName,
+                    "class",
+                    objects);
+
+            for (Object object : objects) {
+                controllers.add((Class<?>) object);
             }
+
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-
-        return listClasses;
     }
 
-    public static void buildRoutingTable(String packageName, Map<UrlMethod, UrlMappingModel> routes) {
+    public static void buildRoutingTable(
+            String packageName,
+            Map<UrlMethod, UrlMappingModel> routes) {
 
-        List<Class<?>> controllers = getControllers(packageName);
+        List<Class<?>> controllers = new ArrayList<>();
+
+        getControllers(packageName, controllers);
 
         for (Class<?> controller : controllers) {
 
@@ -69,7 +79,10 @@ public class Utils {
                 }
 
                 String url = method.getAnnotation(UrlMapping.class).url();
-                String httpMethod = method.getAnnotation(UrlMapping.class).method().toUpperCase();
+                String httpMethod =
+                        method.getAnnotation(UrlMapping.class)
+                                .method()
+                                .toUpperCase();
 
                 UrlMethod urlMethod = new UrlMethod(url, httpMethod);
 
@@ -80,43 +93,45 @@ public class Utils {
 
                 if (routes.containsKey(urlMethod)) {
                     throw new RuntimeException(
-                            "Duplicate URL and method mapping detected : " + url + " [" + httpMethod + "]");
+                            "Duplicate URL and method mapping detected : "
+                                    + url
+                                    + " ["
+                                    + httpMethod
+                                    + "]");
                 }
 
                 routes.put(urlMethod, mapping);
             }
         }
-
     }
 
-    public static List<Class<?>> scanPackage(String packageName) throws Exception {
+    public static void scanPackage(
+            String packageName,
+            List<Class<?>> classes) throws Exception {
 
         if (packageName == null) {
-            throw new IllegalArgumentException("package name cannot be null. Check your configuration file");
+            throw new IllegalArgumentException(
+                    "Package name cannot be null. Check your configuration.");
         }
-
-        List<Class<?>> classes = new ArrayList<>();
 
         String path = packageName.replace('.', '/');
 
-        URL resource = Utils.class
-                .getClassLoader()
-                .getResource(path);
-
-        // System.out.println(resource);
+        URL resource =
+                Utils.class.getClassLoader().getResource(path);
 
         if (resource == null) {
-            return classes;
+            return;
         }
 
         File directory = new File(resource.getFile());
 
         scanDirectory(directory, packageName, classes);
-
-        return classes;
     }
 
-    private static void scanDirectory(File directory, String packageName, List<Class<?>> classes)
+    private static void scanDirectory(
+            File directory,
+            String packageName,
+            List<Class<?>> classes)
             throws ClassNotFoundException {
 
         File[] files = directory.listFiles();
@@ -136,22 +151,22 @@ public class Utils {
 
             } else if (file.getName().endsWith(".class")) {
 
-                String className = packageName + "."
-                        + file.getName().substring(
-                                0,
-                                file.getName().length() - 6);
+                String className =
+                        packageName + "."
+                                + file.getName()
+                                        .substring(0, file.getName().length() - 6);
 
                 classes.add(Class.forName(className));
             }
         }
     }
 
-    public static List<String> classesToString(List<Class<?>> list) {
-        List<String> names = new ArrayList<>();
-        for (Class<?> c : list) {
-            names.add(c.getSimpleName());
-        }
-        return names;
-    }
+    public static void classesToString(
+            List<Class<?>> classes,
+            List<String> names) {
 
+        for (Class<?> classe : classes) {
+            names.add(classe.getSimpleName());
+        }
+    }
 }

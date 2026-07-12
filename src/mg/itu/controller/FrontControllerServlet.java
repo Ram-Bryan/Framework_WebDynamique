@@ -17,23 +17,17 @@ import mg.itu.utils.Utils;
 
 public class FrontControllerServlet extends HttpServlet {
 
-        private Map<UrlMethod, UrlMappingModel> routes = new HashMap<>();
-
-        @Override
-        public void init() throws ServletException {
-                routes = (Map<UrlMethod, UrlMappingModel>) getServletContext().getAttribute("routes");
-        }
-
         private void processRequest(HttpServletRequest request, HttpServletResponse response)
                         throws ServletException, IOException {
 
-                              
                 response.setContentType("text/html");
                 PrintWriter out = response.getWriter();
                 String urlMain = request.getRequestURL().toString();
                 String contextPath = request.getContextPath();
                 String url = request.getRequestURI().substring(contextPath.length());
-                                
+
+                Map<UrlMethod, UrlMappingModel> routes = (Map<UrlMethod, UrlMappingModel>) getServletContext()
+                                .getAttribute("routes");
                 String viewPrefix = (String) getServletContext().getAttribute("view-prefix");
                 String viewSuffix = (String) getServletContext().getAttribute("view-suffix");
 
@@ -48,36 +42,34 @@ public class FrontControllerServlet extends HttpServlet {
                         try {
                                 UrlMappingModel mapping = routes.get(urlMethod);
                                 Object controller = mapping.getController()
-                                .getDeclaredConstructor()
-                                .newInstance();
-
+                                                .getDeclaredConstructor()
+                                                .newInstance();
                                 Object result = mapping.getMethod()
                                                 .invoke(controller);
 
-                                if(result instanceof ModelView){
+                                if (result instanceof ModelView) {
 
-                                ModelView mv = (ModelView) result;
+                                        ModelView mv = (ModelView) result;
 
-                                for(Map.Entry<String,Object> e : mv.getData().entrySet()){
-                                        request.setAttribute(e.getKey(), e.getValue());
-                                }
+                                        for (Map.Entry<String, Object> e : mv.getData().entrySet()) {
+                                                request.setAttribute(e.getKey(), e.getValue());
+                                        }
 
-                                String view = viewPrefix + mv.getUrl() + viewSuffix;
+                                        String view = viewPrefix + mv.getUrl() + viewSuffix;
 
-                                request.getRequestDispatcher(view)
-                                        .forward(request,response);
+                                        request.getRequestDispatcher(view)
+                                                        .forward(request, response);
 
                                         return;
                                 }
-                                
+
                         } catch (Exception e) {
                                 throw new ServletException(e);
                         }
 
-                  
                 } else {
                         response.sendError(HttpServletResponse.SC_NOT_FOUND,
-                                "No route found for " + url);
+                                        "No route found for " + url);
                         return;
                 }
         }
