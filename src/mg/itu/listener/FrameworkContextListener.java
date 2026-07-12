@@ -16,15 +16,30 @@ public class FrameworkContextListener implements ServletContextListener {
     @Override
     public void contextInitialized(ServletContextEvent sce) {
 
-        ServletContext context = sce.getServletContext();
+        try {
 
-        String packageName = context.getInitParameter("package.controller");
+            ServletContext context = sce.getServletContext();
 
-        Map<UrlMethod, UrlMappingModel> routes = new HashMap<>();
+            String packageName = context.getInitParameter("package.controller");
+            String viewPrefix = context.getInitParameter("view-prefix");
+            String viewSuffix = context.getInitParameter("view-suffix");
 
-        Utils.buildRoutingTable(packageName, routes);
 
-        context.setAttribute("routes", routes);
+            Map<UrlMethod, UrlMappingModel> routes = new HashMap<>();
+
+
+            Utils.buildRoutingTable(packageName, routes);
+
+            context.setAttribute("routes", routes);
+
+            context.setAttribute("view-prefix", viewPrefix);
+            context.setAttribute("view-suffix", viewSuffix);
+
+        } catch (Exception e) {
+
+            e.printStackTrace();
+        }
+
     }
 
     @Override
