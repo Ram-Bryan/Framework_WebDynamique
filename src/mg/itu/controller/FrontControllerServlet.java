@@ -17,11 +17,10 @@ import mg.itu.utils.Utils;
 
 public class FrontControllerServlet extends HttpServlet {
 
+
         private void processRequest(HttpServletRequest request, HttpServletResponse response)
                         throws ServletException, IOException {
 
-                response.setContentType("text/html");
-                PrintWriter out = response.getWriter();
                 String urlMain = request.getRequestURL().toString();
                 String contextPath = request.getContextPath();
                 String url = request.getRequestURI().substring(contextPath.length());
@@ -31,9 +30,7 @@ public class FrontControllerServlet extends HttpServlet {
                 String viewPrefix = (String) getServletContext().getAttribute("view-prefix");
                 String viewSuffix = (String) getServletContext().getAttribute("view-suffix");
 
-                out.println("<h2>FrontController servlet</h2>");
-                out.println("<p><strong>Current URL:</strong> " + urlMain + "</p>");
-
+                
                 String reqMethod = request.getMethod();
                 UrlMethod urlMethod = new UrlMethod(url, reqMethod);
 
@@ -61,6 +58,12 @@ public class FrontControllerServlet extends HttpServlet {
                                                         .forward(request, response);
 
                                         return;
+                                } else {
+                                        
+                                        response.setContentType("text/plain");
+                                        PrintWriter out = response.getWriter();
+                                        out.println(result.toString());
+                                        return;                                                                                         
                                 }
 
                         } catch (Exception e) {
