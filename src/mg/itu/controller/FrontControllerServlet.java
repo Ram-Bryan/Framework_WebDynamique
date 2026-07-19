@@ -10,13 +10,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.context.ApplicationContext;
+
 import mg.itu.model.ModelView;
 import mg.itu.model.UrlMappingModel;
 import mg.itu.model.UrlMethod;
 import mg.itu.utils.Utils;
 
 public class FrontControllerServlet extends HttpServlet {
-
 
         private void processRequest(HttpServletRequest request, HttpServletResponse response)
                         throws ServletException, IOException {
@@ -25,12 +26,16 @@ public class FrontControllerServlet extends HttpServlet {
                 String contextPath = request.getContextPath();
                 String url = request.getRequestURI().substring(contextPath.length());
 
-                Map<UrlMethod, UrlMappingModel> routes = (Map<UrlMethod, UrlMappingModel>) getServletContext()
-                                .getAttribute("routes");
+                Map<UrlMethod, UrlMappingModel> routes = (Map<UrlMethod, UrlMappingModel>) getServletContext().getAttribute("routes");
                 String viewPrefix = (String) getServletContext().getAttribute("view-prefix");
                 String viewSuffix = (String) getServletContext().getAttribute("view-suffix");
 
-                
+                ApplicationContext springContext = (ApplicationContext) getServletContext().getAttribute("springContext");
+
+                if (springContext == null) {
+                        throw new ServletException("Spring context not initialized");
+                }
+
                 String reqMethod = request.getMethod();
                 UrlMethod urlMethod = new UrlMethod(url, reqMethod);
 
@@ -38,11 +43,12 @@ public class FrontControllerServlet extends HttpServlet {
 
                         try {
                                 UrlMappingModel mapping = routes.get(urlMethod);
-                                Object controller = mapping.getController()
-                                                .getDeclaredConstructor()
-                                                .newInstance();
-                                Object result = mapping.getMethod()
-                                                .invoke(controller);
+
+                                Object controller = mapping.getController().getDeclaredConstructor().newInstance();
+
+                                springContext.getAutowireCapableBeanFactory().autowireBean(controller);
+
+                                Object result = mapping.getMethod().invoke(controller);
 
                                 if (result instanceof ModelView) {
 
@@ -54,16 +60,15 @@ public class FrontControllerServlet extends HttpServlet {
 
                                         String view = viewPrefix + mv.getUrl() + viewSuffix;
 
-                                        request.getRequestDispatcher(view)
-                                                        .forward(request, response);
+                                        request.getRequestDispatcher(view).forward(request, response);
 
                                         return;
-                                } else {
                                         
+                                } else {
                                         response.setContentType("text/plain");
                                         PrintWriter out = response.getWriter();
                                         out.println(result.toString());
-                                        return;                                                                                         
+                                        return;
                                 }
 
                         } catch (Exception e) {
@@ -71,8 +76,7 @@ public class FrontControllerServlet extends HttpServlet {
                         }
 
                 } else {
-                        response.sendError(HttpServletResponse.SC_NOT_FOUND,
-                                        "No route found for " + url);
+                        response.sendError(HttpServletResponse.SC_NOT_FOUND,"No route found for " + url);
                         return;
                 }
         }
