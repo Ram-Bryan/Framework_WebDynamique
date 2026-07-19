@@ -10,13 +10,15 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.web.context.WebApplicationContext;
+import org.springframework.web.context.support.WebApplicationContextUtils;
+
 import mg.itu.model.ModelView;
 import mg.itu.model.UrlMappingModel;
 import mg.itu.model.UrlMethod;
 import mg.itu.utils.Utils;
 
 public class FrontControllerServlet extends HttpServlet {
-
 
         private void processRequest(HttpServletRequest request, HttpServletResponse response)
                         throws ServletException, IOException {
@@ -30,7 +32,9 @@ public class FrontControllerServlet extends HttpServlet {
                 String viewPrefix = (String) getServletContext().getAttribute("view-prefix");
                 String viewSuffix = (String) getServletContext().getAttribute("view-suffix");
 
-                
+                Map<Class<?>, Object> beans = (Map<Class<?>, Object>) getServletContext().getAttribute("beans");
+
+               
                 String reqMethod = request.getMethod();
                 UrlMethod urlMethod = new UrlMethod(url, reqMethod);
 
@@ -38,9 +42,9 @@ public class FrontControllerServlet extends HttpServlet {
 
                         try {
                                 UrlMappingModel mapping = routes.get(urlMethod);
-                                Object controller = mapping.getController()
-                                                .getDeclaredConstructor()
-                                                .newInstance();
+
+                                Object controller = beans.get(mapping.getController());
+
                                 Object result = mapping.getMethod()
                                                 .invoke(controller);
 
@@ -54,16 +58,15 @@ public class FrontControllerServlet extends HttpServlet {
 
                                         String view = viewPrefix + mv.getUrl() + viewSuffix;
 
-                                        request.getRequestDispatcher(view)
-                                                        .forward(request, response);
+                                        request.getRequestDispatcher(view).forward(request, response);
 
                                         return;
+
                                 } else {
-                                        
                                         response.setContentType("text/plain");
                                         PrintWriter out = response.getWriter();
                                         out.println(result.toString());
-                                        return;                                                                                         
+                                        return;
                                 }
 
                         } catch (Exception e) {
@@ -71,8 +74,7 @@ public class FrontControllerServlet extends HttpServlet {
                         }
 
                 } else {
-                        response.sendError(HttpServletResponse.SC_NOT_FOUND,
-                                        "No route found for " + url);
+                        response.sendError(HttpServletResponse.SC_NOT_FOUND, "No route found for " + url);
                         return;
                 }
         }

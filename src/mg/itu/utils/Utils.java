@@ -13,6 +13,11 @@ import mg.itu.annotation.UrlMapping;
 import mg.itu.model.UrlMappingModel;
 import mg.itu.model.UrlMethod;
 
+
+import org.springframework.web.context.WebApplicationContext;
+import org.springframework.web.context.support.WebApplicationContextUtils;
+
+
 public class Utils {
 
     public static void findWithAnnotation(
@@ -62,6 +67,36 @@ public class Utils {
         }
     }
 
+    public static void chargerBeans(
+            String packageName,
+            WebApplicationContext springContext,
+            Map<Class<?>, Object> beans) {
+
+        List<Class<?>> controllers = new ArrayList<>();
+
+        getControllers(packageName, controllers);
+
+        for (Class<?> controller : controllers) {
+
+            try {
+
+                Object instance = controller.getDeclaredConstructor().newInstance();
+
+                springContext
+                        .getAutowireCapableBeanFactory()
+                        .autowireBean(instance);
+
+                beans.put(controller, instance);
+
+            } catch (Exception e) {
+                throw new RuntimeException(
+                        "Impossible de créer le bean : "
+                                + controller.getName(),
+                        e);
+            }
+        }
+    }
+
     public static void buildRoutingTable(
             String packageName,
             Map<UrlMethod, UrlMappingModel> routes) {
@@ -69,7 +104,6 @@ public class Utils {
         List<Class<?>> controllers = new ArrayList<>();
 
         getControllers(packageName, controllers);
-
 
         for (Class<?> controller : controllers) {
 
@@ -80,10 +114,9 @@ public class Utils {
                 }
 
                 String url = method.getAnnotation(UrlMapping.class).url();
-                String httpMethod =
-                        method.getAnnotation(UrlMapping.class)
-                                .method()
-                                .toUpperCase();
+                String httpMethod = method.getAnnotation(UrlMapping.class)
+                        .method()
+                        .toUpperCase();
 
                 UrlMethod urlMethod = new UrlMethod(url, httpMethod);
 
@@ -117,8 +150,7 @@ public class Utils {
 
         String path = packageName.replace('.', '/');
 
-        URL resource =
-                Utils.class.getClassLoader().getResource(path);
+        URL resource = Utils.class.getClassLoader().getResource(path);
 
         if (resource == null) {
             return;
@@ -152,10 +184,9 @@ public class Utils {
 
             } else if (file.getName().endsWith(".class")) {
 
-                String className =
-                        packageName + "."
-                                + file.getName()
-                                        .substring(0, file.getName().length() - 6);
+                String className = packageName + "."
+                        + file.getName()
+                                .substring(0, file.getName().length() - 6);
 
                 classes.add(Class.forName(className));
             }
