@@ -10,7 +10,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.springframework.context.ApplicationContext;
+import org.springframework.web.context.WebApplicationContext;
+import org.springframework.web.context.support.WebApplicationContextUtils;
 
 import mg.itu.model.ModelView;
 import mg.itu.model.UrlMappingModel;
@@ -26,16 +27,14 @@ public class FrontControllerServlet extends HttpServlet {
                 String contextPath = request.getContextPath();
                 String url = request.getRequestURI().substring(contextPath.length());
 
-                Map<UrlMethod, UrlMappingModel> routes = (Map<UrlMethod, UrlMappingModel>) getServletContext().getAttribute("routes");
+                Map<UrlMethod, UrlMappingModel> routes = (Map<UrlMethod, UrlMappingModel>) getServletContext()
+                                .getAttribute("routes");
                 String viewPrefix = (String) getServletContext().getAttribute("view-prefix");
                 String viewSuffix = (String) getServletContext().getAttribute("view-suffix");
 
-                ApplicationContext springContext = (ApplicationContext) getServletContext().getAttribute("springContext");
+                Map<Class<?>, Object> beans = (Map<Class<?>, Object>) getServletContext().getAttribute("beans");
 
-                if (springContext == null) {
-                        throw new ServletException("Spring context not initialized");
-                }
-
+               
                 String reqMethod = request.getMethod();
                 UrlMethod urlMethod = new UrlMethod(url, reqMethod);
 
@@ -44,11 +43,10 @@ public class FrontControllerServlet extends HttpServlet {
                         try {
                                 UrlMappingModel mapping = routes.get(urlMethod);
 
-                                Object controller = mapping.getController().getDeclaredConstructor().newInstance();
+                                Object controller = beans.get(mapping.getController());
 
-                                springContext.getAutowireCapableBeanFactory().autowireBean(controller);
-
-                                Object result = mapping.getMethod().invoke(controller);
+                                Object result = mapping.getMethod()
+                                                .invoke(controller);
 
                                 if (result instanceof ModelView) {
 
@@ -63,7 +61,7 @@ public class FrontControllerServlet extends HttpServlet {
                                         request.getRequestDispatcher(view).forward(request, response);
 
                                         return;
-                                        
+
                                 } else {
                                         response.setContentType("text/plain");
                                         PrintWriter out = response.getWriter();
@@ -76,7 +74,7 @@ public class FrontControllerServlet extends HttpServlet {
                         }
 
                 } else {
-                        response.sendError(HttpServletResponse.SC_NOT_FOUND,"No route found for " + url);
+                        response.sendError(HttpServletResponse.SC_NOT_FOUND, "No route found for " + url);
                         return;
                 }
         }
