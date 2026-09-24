@@ -2,6 +2,7 @@ package mg.itu.listener;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.lang.reflect.Constructor;
 
 import jakarta.servlet.ServletContext;
 import jakarta.servlet.ServletContextEvent;
@@ -9,6 +10,8 @@ import jakarta.servlet.ServletContextListener;
 
 import mg.itu.model.UrlMappingModel;
 import mg.itu.model.UrlMethod;
+import mg.itu.model.ApplicationContext;
+import mg.itu.annotation.Controller;
 import mg.itu.utils.Utils;
 
 public class FrameworkContextListener implements ServletContextListener {
@@ -24,13 +27,18 @@ public class FrameworkContextListener implements ServletContextListener {
             String viewPrefix = context.getInitParameter("view-prefix");
             String viewSuffix = context.getInitParameter("view-suffix");
 
+            // Create ApplicationContext (the container)
+            ApplicationContext appContext = new ApplicationContext();
+
+            // Scan and instantiate all @Controller beans
+            Utils.scanAndInstantiateBeans(packageName, appContext);
 
             Map<UrlMethod, UrlMappingModel> routes = new HashMap<>();
-
 
             Utils.buildRoutingTable(packageName, routes);
 
             context.setAttribute("routes", routes);
+            context.setAttribute("applicationContext", appContext);
 
             context.setAttribute("view-prefix", viewPrefix);
             context.setAttribute("view-suffix", viewSuffix);

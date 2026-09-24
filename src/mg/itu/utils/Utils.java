@@ -12,6 +12,7 @@ import mg.itu.annotation.Controller;
 import mg.itu.annotation.UrlMapping;
 import mg.itu.model.UrlMappingModel;
 import mg.itu.model.UrlMethod;
+import mg.itu.model.ApplicationContext;
 
 public class Utils {
 
@@ -168,6 +169,20 @@ public class Utils {
 
         for (Class<?> classe : classes) {
             names.add(classe.getSimpleName());
+        }
+    }
+
+    public static void scanAndInstantiateBeans(String packageName, ApplicationContext appContext) {
+        List<Class<?>> controllers = new ArrayList<>();
+        getControllers(packageName, controllers);
+
+        for (Class<?> controller : controllers) {
+            try {
+                Object instance = controller.getDeclaredConstructor().newInstance();
+                appContext.addBean(controller.getSimpleName(), instance);
+            } catch (Exception e) {
+                throw new RuntimeException("Failed to instantiate bean: " + controller.getName(), e);
+            }
         }
     }
 }

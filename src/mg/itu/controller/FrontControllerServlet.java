@@ -13,6 +13,7 @@ import java.util.Map;
 import mg.itu.model.ModelView;
 import mg.itu.model.UrlMappingModel;
 import mg.itu.model.UrlMethod;
+import mg.itu.model.ApplicationContext;
 import mg.itu.utils.Utils;
 
 public class FrontControllerServlet extends HttpServlet {
@@ -29,6 +30,8 @@ public class FrontControllerServlet extends HttpServlet {
                                 .getAttribute("routes");
                 String viewPrefix = (String) getServletContext().getAttribute("view-prefix");
                 String viewSuffix = (String) getServletContext().getAttribute("view-suffix");
+                ApplicationContext appContext = (ApplicationContext) getServletContext()
+                                .getAttribute("applicationContext");
 
                 
                 String reqMethod = request.getMethod();
@@ -38,9 +41,8 @@ public class FrontControllerServlet extends HttpServlet {
 
                         try {
                                 UrlMappingModel mapping = routes.get(urlMethod);
-                                Object controller = mapping.getController()
-                                                .getDeclaredConstructor()
-                                                .newInstance();
+                                String controllerName = mapping.getController().getSimpleName();
+                                Object controller = appContext.getBean(controllerName);
                                 Object result = mapping.getMethod()
                                                 .invoke(controller);
 
