@@ -27,10 +27,7 @@ public class FrameworkContextListener implements ServletContextListener {
             String viewPrefix = context.getInitParameter("view-prefix");
             String viewSuffix = context.getInitParameter("view-suffix");
 
-            // Create ApplicationContext (the container)
             ApplicationContext appContext = new ApplicationContext();
-
-            // Scan and instantiate all @Controller beans
             Utils.scanAndInstantiateBeans(packageName, appContext);
 
             Map<UrlMethod, UrlMappingModel> routes = new HashMap<>();

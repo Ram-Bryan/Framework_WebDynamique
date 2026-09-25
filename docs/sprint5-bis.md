@@ -12,4 +12,3 @@ Conteneur demarrer -->
 2. prendre instances du conteneur
 
 type application context --> prendre application context dansxml. null sinon prendr el instance. --> bean instancer
-
