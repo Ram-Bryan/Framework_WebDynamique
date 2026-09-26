@@ -172,7 +172,8 @@ public class Utils {
         try {
             Class<?> contextClass = Class.forName("org.springframework.web.context.WebApplicationContext");
             Class<?> utilsClass = Class.forName("org.springframework.web.context.support.WebApplicationContextUtils");
-            Object methodResult = utilsClass.getMethod("getWebApplicationContext", servletContext.getClass())
+            Object methodResult = utilsClass
+                    .getMethod("getWebApplicationContext", Class.forName("jakarta.servlet.ServletContext"))
                     .invoke(null, servletContext);
 
             return contextClass.cast(methodResult);
