@@ -10,6 +10,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import mg.itu.annotation.WebAPI;
 import mg.itu.model.ModelView;
 import mg.itu.model.UrlMappingModel;
 import mg.itu.model.UrlMethod;
@@ -45,6 +48,19 @@ public class FrontControllerServlet extends HttpServlet {
                                 Object controller = appContext.getBean(controllerName);
                                 Object result = mapping.getMethod()
                                                 .invoke(controller);
+
+                                if (mapping.getMethod().isAnnotationPresent(WebAPI.class)) {
+                                        response.setContentType("application/json");
+                                        PrintWriter out = response.getWriter();
+
+                                        if (result instanceof String) {
+                                                out.print((String) result);
+                                        } else {
+                                                ObjectMapper mapper = new ObjectMapper();
+                                                out.print(mapper.writeValueAsString(result));
+                                        }
+                                        return;
+                                }
 
                                 if (result instanceof ModelView) {
 

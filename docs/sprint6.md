@@ -13,7 +13,7 @@ return Object, librairie en json
 Methode 2:
 return String, pas de transformation.
 
-If other than String (peut importe, listes, object,...)  Tout Json
+If autre que String (peut importe, listes, object,...) on met tout en json
 
-Bonus:
+Bonus (optionnel):
 Dans l'annotation: attribut true false (deja json, ou non ?)

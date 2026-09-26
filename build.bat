@@ -7,19 +7,18 @@ set LIB_DIR=lib
 set BUILD_DIR=build
 set OUTPUT_JAR=framework.jar
 
-REM Trouver automatiquement le servlet JAR
+REM Build classpath with ALL jars in lib folder
+set CP=
 for %%f in ("%LIB_DIR%\*.jar") do (
-    set SERVLET_JAR=%%f
-    goto :found
+    set CP=!CP!;%%f
 )
 
-:found
-if not defined SERVLET_JAR (
-    echo Erreur: Aucun JAR servlet trouve dans %LIB_DIR%
+if not defined CP (
+    echo Erreur: Aucun JAR trouve dans %LIB_DIR%
     exit /b 1
 )
 
-echo Servlet JAR trouve : %SERVLET_JAR%
+echo CP trouve : !CP!
 
 REM Nettoyer
 if exist %BUILD_DIR% rd /s /q %BUILD_DIR%
@@ -38,7 +37,7 @@ if not defined JAVA_FILES (
 
 REM Compiler
 echo Compilation en cours...
-javac -cp "%SERVLET_JAR%" -d %BUILD_DIR%\classes !JAVA_FILES!
+javac -cp "!CP!" -d %BUILD_DIR%\classes !JAVA_FILES!
 
 if %errorlevel% equ 0 (
     echo Compilation reussie !
@@ -49,7 +48,6 @@ if %errorlevel% equ 0 (
     
     echo [OK] JAR cree : %OUTPUT_JAR%
     
-    REM Verifier le contenu (sans les libs)
     echo.
     echo Contenu du JAR :
     jar tf %OUTPUT_JAR% | findstr /n "." | findstr "^[1-9]:"
