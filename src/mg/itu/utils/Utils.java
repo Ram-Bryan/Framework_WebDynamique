@@ -14,11 +14,6 @@ import mg.itu.model.UrlMappingModel;
 import mg.itu.model.UrlMethod;
 import mg.itu.model.ApplicationContext;
 
-
-import org.springframework.web.context.WebApplicationContext;
-import org.springframework.web.context.support.WebApplicationContextUtils;
-
-
 public class Utils {
 
     public static void findWithAnnotation(
@@ -65,36 +60,6 @@ public class Utils {
 
         } catch (Exception e) {
             throw new RuntimeException(e);
-        }
-    }
-
-    public static void chargerBeans(
-            String packageName,
-            WebApplicationContext springContext,
-            Map<Class<?>, Object> beans) {
-
-        List<Class<?>> controllers = new ArrayList<>();
-
-        getControllers(packageName, controllers);
-
-        for (Class<?> controller : controllers) {
-
-            try {
-
-                Object instance = controller.getDeclaredConstructor().newInstance();
-
-                springContext
-                        .getAutowireCapableBeanFactory()
-                        .autowireBean(instance);
-
-                beans.put(controller, instance);
-
-            } catch (Exception e) {
-                throw new RuntimeException(
-                        "Impossible de créer le bean : "
-                                + controller.getName(),
-                        e);
-            }
         }
     }
 
