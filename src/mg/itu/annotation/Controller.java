@@ -2,7 +2,7 @@ package mg.itu.annotation;
 
 import java.lang.annotation.*;
 
-@Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
+@Retention(RetentionPolicy.RUNTIME)
 public @interface Controller { 
 }
