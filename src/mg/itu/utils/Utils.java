@@ -12,11 +12,7 @@ import mg.itu.annotation.Controller;
 import mg.itu.annotation.UrlMapping;
 import mg.itu.model.UrlMappingModel;
 import mg.itu.model.UrlMethod;
-
-
-import org.springframework.web.context.WebApplicationContext;
-import org.springframework.web.context.support.WebApplicationContextUtils;
-
+import mg.itu.model.ApplicationContext;
 
 public class Utils {
 
@@ -64,36 +60,6 @@ public class Utils {
 
         } catch (Exception e) {
             throw new RuntimeException(e);
-        }
-    }
-
-    public static void chargerBeans(
-            String packageName,
-            WebApplicationContext springContext,
-            Map<Class<?>, Object> beans) {
-
-        List<Class<?>> controllers = new ArrayList<>();
-
-        getControllers(packageName, controllers);
-
-        for (Class<?> controller : controllers) {
-
-            try {
-
-                Object instance = controller.getDeclaredConstructor().newInstance();
-
-                springContext
-                        .getAutowireCapableBeanFactory()
-                        .autowireBean(instance);
-
-                beans.put(controller, instance);
-
-            } catch (Exception e) {
-                throw new RuntimeException(
-                        "Impossible de créer le bean : "
-                                + controller.getName(),
-                        e);
-            }
         }
     }
 
@@ -199,6 +165,52 @@ public class Utils {
 
         for (Class<?> classe : classes) {
             names.add(classe.getSimpleName());
+        }
+    }
+
+    public static Object getSpringWebApplicationContext(Object servletContext) {
+        try {
+            Class<?> contextClass = Class.forName("org.springframework.web.context.WebApplicationContext");
+            Class<?> utilsClass = Class.forName("org.springframework.web.context.support.WebApplicationContextUtils");
+            Object methodResult = utilsClass
+                    .getMethod("getWebApplicationContext", Class.forName("jakarta.servlet.ServletContext"))
+                    .invoke(null, servletContext);
+
+            return contextClass.cast(methodResult);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    public static void scanAndInstantiateBeans(
+            String packageName,
+            ApplicationContext appContext,
+            Object springContext) {
+
+        List<Class<?>> controllers = new ArrayList<>();
+        getControllers(packageName, controllers);
+
+        for (Class<?> controller : controllers) {
+            try {
+                Object instance = controller.getDeclaredConstructor().newInstance();
+
+                if (springContext != null) {
+                    try {
+                        Object autowireCapableBeanFactory = springContext.getClass()
+                                .getMethod("getAutowireCapableBeanFactory")
+                                .invoke(springContext);
+                        autowireCapableBeanFactory.getClass()
+                                .getMethod("autowireBean", Object.class)
+                                .invoke(autowireCapableBeanFactory, instance);
+                    } catch (Exception ignored) {
+                        // Spring may not be available or may not be configured in this context.
+                    }
+                }
+
+                appContext.addBean(controller.getSimpleName(), instance);
+            } catch (Exception e) {
+                throw new RuntimeException("Failed to instantiate bean: " + controller.getName(), e);
+            }
         }
     }
 }

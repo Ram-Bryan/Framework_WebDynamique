@@ -7,11 +7,9 @@ import jakarta.servlet.ServletContext;
 import jakarta.servlet.ServletContextEvent;
 import jakarta.servlet.ServletContextListener;
 
-import org.springframework.web.context.WebApplicationContext;
-import org.springframework.web.context.support.WebApplicationContextUtils;
-
 import mg.itu.model.UrlMappingModel;
 import mg.itu.model.UrlMethod;
+import mg.itu.model.ApplicationContext;
 import mg.itu.utils.Utils;
 
 public class FrameworkContextListener implements ServletContextListener {
@@ -22,30 +20,24 @@ public class FrameworkContextListener implements ServletContextListener {
         try {
 
             ServletContext context = sce.getServletContext();
-            WebApplicationContext springContext = WebApplicationContextUtils.getWebApplicationContext(context);
-
-            if (springContext == null) {
-                throw new RuntimeException(
-                        "Spring WebApplicationContext introuvable");
-            }
-
-            context.setAttribute("springContext", springContext);
 
             String packageName = context.getInitParameter("package.controller");
             String viewPrefix = context.getInitParameter("view-prefix");
             String viewSuffix = context.getInitParameter("view-suffix");
 
-            Map<Class<?>, Object> beans = new HashMap<>();
+            // Creer le contenaire
+            ApplicationContext appContext = new ApplicationContext();
+         
+            Object springContext = Utils.getSpringWebApplicationContext(context);
 
-            Utils.chargerBeans(packageName, springContext, beans);
-
-            context.setAttribute("beans", beans);
+            Utils.scanAndInstantiateBeans(packageName, appContext, springContext);
 
             Map<UrlMethod, UrlMappingModel> routes = new HashMap<>();
 
             Utils.buildRoutingTable(packageName, routes);
 
             context.setAttribute("routes", routes);
+            context.setAttribute("applicationContext", appContext);
 
             context.setAttribute("view-prefix", viewPrefix);
             context.setAttribute("view-suffix", viewSuffix);
@@ -53,6 +45,7 @@ public class FrameworkContextListener implements ServletContextListener {
         } catch (Exception e) {
 
             e.printStackTrace();
+            throw new RuntimeException("Framework initialization failed", e);
         }
 
     }

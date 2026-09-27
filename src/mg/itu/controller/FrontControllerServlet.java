@@ -10,15 +10,17 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.springframework.web.context.WebApplicationContext;
-import org.springframework.web.context.support.WebApplicationContextUtils;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
+import mg.itu.annotation.WebAPI;
 import mg.itu.model.ModelView;
 import mg.itu.model.UrlMappingModel;
 import mg.itu.model.UrlMethod;
+import mg.itu.model.ApplicationContext;
 import mg.itu.utils.Utils;
 
 public class FrontControllerServlet extends HttpServlet {
+
 
         private void processRequest(HttpServletRequest request, HttpServletResponse response)
                         throws ServletException, IOException {
@@ -31,10 +33,10 @@ public class FrontControllerServlet extends HttpServlet {
                                 .getAttribute("routes");
                 String viewPrefix = (String) getServletContext().getAttribute("view-prefix");
                 String viewSuffix = (String) getServletContext().getAttribute("view-suffix");
+                ApplicationContext appContext = (ApplicationContext) getServletContext()
+                                .getAttribute("applicationContext");
 
-                Map<Class<?>, Object> beans = (Map<Class<?>, Object>) getServletContext().getAttribute("beans");
-
-               
+                
                 String reqMethod = request.getMethod();
                 UrlMethod urlMethod = new UrlMethod(url, reqMethod);
 
@@ -42,11 +44,23 @@ public class FrontControllerServlet extends HttpServlet {
 
                         try {
                                 UrlMappingModel mapping = routes.get(urlMethod);
-
-                                Object controller = beans.get(mapping.getController());
-
+                                String controllerName = mapping.getController().getSimpleName();
+                                Object controller = appContext.getBean(controllerName);
                                 Object result = mapping.getMethod()
                                                 .invoke(controller);
+
+                                if (mapping.getMethod().isAnnotationPresent(WebAPI.class)) {
+                                        response.setContentType("application/json");
+                                        PrintWriter out = response.getWriter();
+
+                                        if (result instanceof String) {
+                                                out.print((String) result);
+                                        } else {
+                                                ObjectMapper mapper = new ObjectMapper();
+                                                out.print(mapper.writeValueAsString(result));
+                                        }
+                                        return;
+                                }
 
                                 if (result instanceof ModelView) {
 
@@ -58,15 +72,16 @@ public class FrontControllerServlet extends HttpServlet {
 
                                         String view = viewPrefix + mv.getUrl() + viewSuffix;
 
-                                        request.getRequestDispatcher(view).forward(request, response);
+                                        request.getRequestDispatcher(view)
+                                                        .forward(request, response);
 
                                         return;
-
                                 } else {
+                                        
                                         response.setContentType("text/plain");
                                         PrintWriter out = response.getWriter();
                                         out.println(result.toString());
-                                        return;
+                                        return;                                                                                         
                                 }
 
                         } catch (Exception e) {
@@ -74,7 +89,8 @@ public class FrontControllerServlet extends HttpServlet {
                         }
 
                 } else {
-                        response.sendError(HttpServletResponse.SC_NOT_FOUND, "No route found for " + url);
+                        response.sendError(HttpServletResponse.SC_NOT_FOUND,
+                                        "No route found for " + url);
                         return;
                 }
         }

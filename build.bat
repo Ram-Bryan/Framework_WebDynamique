@@ -7,14 +7,10 @@ set LIB_DIR=lib
 set BUILD_DIR=build
 set OUTPUT_JAR=framework.jar
 
-REM Construire le classpath avec TOUS les JARs
+REM Build classpath with ALL jars in lib folder
 set CP=
 for %%f in ("%LIB_DIR%\*.jar") do (
-    if "!CP!"=="" (
-        set CP=%%f
-    ) else (
-        set CP=!CP!;%%f
-    )
+    set CP=!CP!;%%f
 )
 
 if not defined CP (
@@ -22,7 +18,7 @@ if not defined CP (
     exit /b 1
 )
 
-echo Tous les JARs trouves dans le classpath
+echo CP trouve : !CP!
 
 REM Nettoyer
 if exist %BUILD_DIR% rd /s /q %BUILD_DIR%
@@ -39,9 +35,9 @@ if not defined JAVA_FILES (
     exit /b 1
 )
 
-REM Compiler avec TOUS les JARs dans le classpath
-echo Compilation en cours avec classpath : %CP%
-javac -cp "%CP%" -d %BUILD_DIR%\classes !JAVA_FILES!
+REM Compiler
+echo Compilation en cours...
+javac -cp "!CP!" -d %BUILD_DIR%\classes !JAVA_FILES!
 
 if %errorlevel% equ 0 (
     echo Compilation reussie !
@@ -52,7 +48,6 @@ if %errorlevel% equ 0 (
     
     echo [OK] JAR cree : %OUTPUT_JAR%
     
-    REM Verifier le contenu
     echo.
     echo Contenu du JAR :
     jar tf %OUTPUT_JAR% | findstr /n "." | findstr "^[1-9]:"
