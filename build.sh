@@ -39,7 +39,7 @@ fi
 
 # Compiler
 echo "Compilation en cours..."
-javac -cp "$CP" -d "$BUILD_DIR/classes" $JAVA_FILES
+javac -parameters -cp "$CP" -d "$BUILD_DIR/classes" $JAVA_FILES
 
 if [ $? -eq 0 ]; then
     echo "Compilation réussie !"

@@ -3,7 +3,12 @@ package mg.itu.utils;
 import java.io.File;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
+import java.math.BigDecimal;
 import java.net.URL;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -212,5 +217,99 @@ public class Utils {
                 throw new RuntimeException("Failed to instantiate bean: " + controller.getName(), e);
             }
         }
+    }
+
+    public static Object[] resolveArguments(Method method, Map<String, String[]> parameterMap) {
+        Parameter[] params = method.getParameters();
+        Object[] args = new Object[params.length];
+
+        for (int i = 0; i < params.length; i++) {
+            String name = params[i].getName();
+            String[] values = parameterMap.get(name);
+            String rawValue = (values != null && values.length > 0) ? values[0] : null;
+            args[i] = convert(rawValue, params[i].getType());
+        }
+        return args;
+    }
+
+    public static Object convert(String rawValue, Class<?> targetType) {
+        if (rawValue == null) {
+            if (targetType == String.class) {
+                return null;
+            }
+            if (targetType == Integer.class || targetType == int.class) {
+                return targetType == int.class ? 0 : null;
+            }
+            if (targetType == Long.class || targetType == long.class) {
+                return targetType == long.class ? 0L : null;
+            }
+            if (targetType == Double.class || targetType == double.class) {
+                return targetType == double.class ? 0.0d : null;
+            }
+            if (targetType == Float.class || targetType == float.class) {
+                return targetType == float.class ? 0.0f : null;
+            }
+            if (targetType == Boolean.class || targetType == boolean.class) {
+                return targetType == boolean.class ? false : null;
+            }
+            if (targetType == Short.class || targetType == short.class) {
+                return targetType == short.class ? (short) 0 : null;
+            }
+            if (targetType == Byte.class || targetType == byte.class) {
+                return targetType == byte.class ? (byte) 0 : null;
+            }
+            if (targetType == Character.class || targetType == char.class) {
+                return targetType == char.class ? '\u0000' : null;
+            }
+            if (targetType == BigDecimal.class) {
+                return null;
+            }
+            if (targetType == LocalDate.class) {
+                return null;
+            }
+            if (targetType == LocalDateTime.class) {
+                return null;
+            }
+            return null;
+        }
+
+        if (targetType == String.class) {
+            return rawValue;
+        }
+        if (targetType == int.class || targetType == Integer.class) {
+            return Integer.valueOf(rawValue);
+        }
+        if (targetType == long.class || targetType == Long.class) {
+            return Long.valueOf(rawValue);
+        }
+        if (targetType == double.class || targetType == Double.class) {
+            return Double.valueOf(rawValue);
+        }
+        if (targetType == float.class || targetType == Float.class) {
+            return Float.valueOf(rawValue);
+        }
+        if (targetType == boolean.class || targetType == Boolean.class) {
+            return Boolean.valueOf(rawValue);
+        }
+        if (targetType == short.class || targetType == Short.class) {
+            return Short.valueOf(rawValue);
+        }
+        if (targetType == byte.class || targetType == Byte.class) {
+            return Byte.valueOf(rawValue);
+        }
+        if (targetType == char.class || targetType == Character.class) {
+            return rawValue.charAt(0);
+        }
+        if (targetType == BigDecimal.class) {
+            return new BigDecimal(rawValue);
+        }
+        if (targetType == LocalDate.class) {
+            return LocalDate.parse(rawValue, DateTimeFormatter.ISO_LOCAL_DATE);
+        }
+        if (targetType == LocalDateTime.class) {
+            return LocalDateTime.parse(rawValue, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        }
+
+        throw new IllegalArgumentException("Unsupported parameter type: " + targetType.getName());
     }
 }

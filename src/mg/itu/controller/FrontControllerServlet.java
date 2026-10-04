@@ -5,9 +5,7 @@ import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
+import java.lang.reflect.Method;
 import java.util.Map;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -20,7 +18,6 @@ import mg.itu.model.ApplicationContext;
 import mg.itu.utils.Utils;
 
 public class FrontControllerServlet extends HttpServlet {
-
 
         private void processRequest(HttpServletRequest request, HttpServletResponse response)
                         throws ServletException, IOException {
@@ -36,7 +33,6 @@ public class FrontControllerServlet extends HttpServlet {
                 ApplicationContext appContext = (ApplicationContext) getServletContext()
                                 .getAttribute("applicationContext");
 
-                
                 String reqMethod = request.getMethod();
                 UrlMethod urlMethod = new UrlMethod(url, reqMethod);
 
@@ -46,8 +42,20 @@ public class FrontControllerServlet extends HttpServlet {
                                 UrlMappingModel mapping = routes.get(urlMethod);
                                 String controllerName = mapping.getController().getSimpleName();
                                 Object controller = appContext.getBean(controllerName);
-                                Object result = mapping.getMethod()
-                                                .invoke(controller);
+
+                                if (controller == null) {
+                                        throw new ServletException(
+                                                        "Aucun bean trouvé pour le contrôleur: " + controllerName);
+                                }
+
+                                Object result;
+                                if (mapping.getMethod().getParameterCount() == 0) {
+                                        result = mapping.getMethod().invoke(controller);
+                                } else {
+                                        Object[] args = Utils.resolveArguments(mapping.getMethod(),
+                                                        request.getParameterMap());
+                                        result = mapping.getMethod().invoke(controller, args);
+                                }
 
                                 if (mapping.getMethod().isAnnotationPresent(WebAPI.class)) {
                                         response.setContentType("application/json");
@@ -76,12 +84,14 @@ public class FrontControllerServlet extends HttpServlet {
                                                         .forward(request, response);
 
                                         return;
+
+                                } else if (result == null) {
+                                        return; // si void
                                 } else {
-                                        
                                         response.setContentType("text/plain");
                                         PrintWriter out = response.getWriter();
                                         out.println(result.toString());
-                                        return;                                                                                         
+                                        return;
                                 }
 
                         } catch (Exception e) {
@@ -106,5 +116,4 @@ public class FrontControllerServlet extends HttpServlet {
                         throws ServletException, IOException {
                 processRequest(request, response);
         }
-
 }
