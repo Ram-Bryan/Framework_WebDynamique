@@ -3,6 +3,7 @@ package mg.itu.utils;
 import java.io.File;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
+import java.lang.reflect.Field;
 import java.lang.reflect.Parameter;
 import java.math.BigDecimal;
 import java.net.URL;
@@ -224,12 +225,80 @@ public class Utils {
         Object[] args = new Object[params.length];
 
         for (int i = 0; i < params.length; i++) {
-            String name = params[i].getName();
-            String[] values = parameterMap.get(name);
-            String rawValue = (values != null && values.length > 0) ? values[0] : null;
-            args[i] = convert(rawValue, params[i].getType());
+
+            Parameter parameter = params[i];
+
+            String parameterName = parameter.getName();
+            Class<?> parameterType = parameter.getType();
+
+            // Type simple
+            if (isSimpleType(parameterType)) {
+
+                String[] values = parameterMap.get(parameterName);
+
+                String rawValue = null;
+
+                if (values != null && values.length > 0) {
+                    rawValue = values[0];
+                }
+
+                args[i] = convert(rawValue, parameterType);
+
+            }
+            // Objet complexe
+            else {
+
+                try {
+                    args[i] = bindObject(parameterType, parameterMap);
+                } catch (Exception e) {
+                    throw new RuntimeException("Failed to bind object for parameter: " + parameterName, e);
+                }
+            }
         }
+
         return args;
+    }
+
+    public static boolean isSimpleType(Class<?> type) {
+
+        return type == String.class
+                || type == int.class
+                || type == Integer.class
+                || type == long.class
+                || type == Long.class
+                || type == double.class
+                || type == Double.class
+                || type == float.class
+                || type == Float.class
+                || type == boolean.class
+                || type == Boolean.class;
+    }
+
+    public static Object bindObject(
+            Class<?> targetType,
+            Map<String, String[]> parameterMap) throws Exception {
+
+        Object object = targetType.getDeclaredConstructor().newInstance();
+
+        for (Field field : targetType.getDeclaredFields()) {
+
+            String fieldName = field.getName();
+
+            String[] values = parameterMap.get(fieldName);
+
+            if (values == null || values.length == 0) {
+                continue;
+            }
+
+            String rawValue = values[0];
+
+            Object value = convert(rawValue, field.getType());
+
+            field.setAccessible(true);
+            field.set(object, value);
+        }
+
+        return object;
     }
 
     public static Object convert(String rawValue, Class<?> targetType) {
