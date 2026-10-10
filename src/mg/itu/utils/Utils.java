@@ -3,7 +3,10 @@ package mg.itu.utils;
 import java.io.File;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
+import java.lang.reflect.Field;
 import java.lang.reflect.Parameter;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.net.URL;
 import java.time.LocalDate;
@@ -224,12 +227,177 @@ public class Utils {
         Object[] args = new Object[params.length];
 
         for (int i = 0; i < params.length; i++) {
-            String name = params[i].getName();
-            String[] values = parameterMap.get(name);
-            String rawValue = (values != null && values.length > 0) ? values[0] : null;
-            args[i] = convert(rawValue, params[i].getType());
+
+            Parameter parameter = params[i];
+
+            String parameterName = parameter.getName();
+            Class<?> parameterType = parameter.getType();
+
+            if (List.class.isAssignableFrom(parameterType)) {
+                Class<?> elementType = getListElementType(parameter.getParameterizedType());
+                args[i] = bindList(parameterName, elementType, parameterMap);
+                continue;
+            }
+
+            // Type simple
+            if (isSimpleType(parameterType)) {
+
+                String[] values = parameterMap.get(parameterName);
+
+                String rawValue = null;
+
+                if (values != null && values.length > 0) {
+                    rawValue = values[0];
+                }
+
+                args[i] = convert(rawValue, parameterType);
+
+            }
+            // Objet complexe
+            else {
+
+                try {
+                    args[i] = bindObject(parameterType, parameterMap);
+                } catch (Exception e) {
+                    throw new RuntimeException("Failed to bind object for parameter: " + parameterName, e);
+                }
+            }
         }
+
         return args;
+    }
+
+    private static Class<?> getListElementType(Type genericType) {
+        if (genericType instanceof ParameterizedType) {
+            Type arg = ((ParameterizedType) genericType).getActualTypeArguments()[0];
+            if (arg instanceof Class<?>) {
+                return (Class<?>) arg;
+            }
+        }
+        return String.class;
+    }
+
+    private static List<Object> bindList(
+            String parameterName,
+            Class<?> elementType,
+            Map<String, String[]> parameterMap) {
+        if (isSimpleType(elementType)) {
+            return bindSimpleList(parameterName, elementType, parameterMap);
+        }
+        return bindObjectList(parameterName, elementType, parameterMap);
+    }
+
+    private static List<Object> bindSimpleList(
+            String parameterName,
+            Class<?> elementType,
+            Map<String, String[]> parameterMap) {
+        List<Object> result = new ArrayList<>();
+        String[] values = parameterMap.get(parameterName);
+
+        if (values != null) {
+            for (String value : values) {
+                result.add(convert(value, elementType));
+            }
+        }
+        return result;
+    }
+
+    private static List<Object> bindObjectList(
+            String parameterName,
+            Class<?> elementType,
+            Map<String, String[]> parameterMap) {
+        List<Object> result = new ArrayList<>();
+        int index = 0;
+
+        while (true) {
+            String prefix = parameterName + "[" + index + "].";
+            boolean hasAnyFieldForThisIndex = parameterMap.keySet().stream()
+                    .anyMatch(key -> key.startsWith(prefix));
+
+            if (!hasAnyFieldForThisIndex) {
+                break;
+            }
+
+            try {
+                Object element = bindObjectWithPrefix(elementType, parameterMap, prefix);
+                result.add(element);
+            } catch (Exception e) {
+                throw new RuntimeException("Failed to bind list element at index " + index, e);
+            }
+
+            index++;
+        }
+
+        return result;
+    }
+
+    private static Object bindObjectWithPrefix(
+            Class<?> targetType,
+            Map<String, String[]> parameterMap,
+            String prefix) throws Exception {
+        Object object = targetType.getDeclaredConstructor().newInstance();
+
+        for (Field field : targetType.getDeclaredFields()) {
+            String fieldPrefix = prefix + field.getName();
+            Class<?> fieldType = field.getType();
+            Object value;
+
+            if (List.class.isAssignableFrom(fieldType)) {
+                Class<?> elementType = getListElementType(field.getGenericType());
+                value = bindList(fieldPrefix, elementType, parameterMap);
+
+            } else if (isSimpleType(fieldType)) {
+                String[] values = parameterMap.get(fieldPrefix);
+                if (values == null || values.length == 0) {
+                    continue;
+                }
+                value = convert(values[0], fieldType);
+
+            } else {
+                String nestedPrefix = fieldPrefix + ".";
+                boolean hasNestedFields = parameterMap.keySet().stream()
+                        .anyMatch(key -> key.startsWith(nestedPrefix));
+                if (!hasNestedFields) {
+                    continue;
+                }
+                value = bindObjectWithPrefix(fieldType, parameterMap, nestedPrefix);
+            }
+
+            field.setAccessible(true);
+            field.set(object, value);
+        }
+
+        return object;
+    }
+
+    public static boolean isSimpleType(Class<?> type) {
+
+        return type == String.class
+                || type == int.class
+                || type == Integer.class
+                || type == long.class
+                || type == Long.class
+                || type == double.class
+                || type == Double.class
+                || type == float.class
+                || type == Float.class
+                || type == boolean.class
+                || type == Boolean.class
+                || type == short.class
+                || type == Short.class
+                || type == byte.class
+                || type == Byte.class
+                || type == char.class
+                || type == Character.class
+                || type == BigDecimal.class
+                || type == LocalDate.class
+                || type == LocalDateTime.class;
+    }
+
+    public static Object bindObject(
+            Class<?> targetType,
+            Map<String, String[]> parameterMap) throws Exception {
+        return bindObjectWithPrefix(targetType, parameterMap, "");
     }
 
     public static Object convert(String rawValue, Class<?> targetType) {

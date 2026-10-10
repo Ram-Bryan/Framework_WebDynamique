@@ -5,6 +5,7 @@ import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Map;
 
@@ -22,7 +23,8 @@ public class FrontControllerServlet extends HttpServlet {
         private void processRequest(HttpServletRequest request, HttpServletResponse response)
                         throws ServletException, IOException {
 
-                String urlMain = request.getRequestURL().toString();
+                request.setCharacterEncoding("UTF-8");
+                response.setCharacterEncoding("UTF-8");
                 String contextPath = request.getContextPath();
                 String url = request.getRequestURI().substring(contextPath.length());
 
@@ -48,17 +50,13 @@ public class FrontControllerServlet extends HttpServlet {
                                                         "Aucun bean trouvé pour le contrôleur: " + controllerName);
                                 }
 
-                                Object result;
-                                if (mapping.getMethod().getParameterCount() == 0) {
-                                        result = mapping.getMethod().invoke(controller);
-                                } else {
+                               
                                         Object[] args = Utils.resolveArguments(mapping.getMethod(),
                                                         request.getParameterMap());
-                                        result = mapping.getMethod().invoke(controller, args);
-                                }
+                                        Object result = mapping.getMethod().invoke(controller, args);
 
                                 if (mapping.getMethod().isAnnotationPresent(WebAPI.class)) {
-                                        response.setContentType("application/json");
+                                        response.setContentType("application/json;charset=UTF-8");
                                         PrintWriter out = response.getWriter();
 
                                         if (result instanceof String) {
@@ -88,12 +86,14 @@ public class FrontControllerServlet extends HttpServlet {
                                 } else if (result == null) {
                                         return; // si void
                                 } else {
-                                        response.setContentType("text/plain");
+                                        response.setContentType("text/plain;charset=UTF-8");
                                         PrintWriter out = response.getWriter();
                                         out.println(result.toString());
                                         return;
                                 }
 
+                        } catch (InvocationTargetException e) {
+                                throw new ServletException(e.getCause());
                         } catch (Exception e) {
                                 throw new ServletException(e);
                         }
