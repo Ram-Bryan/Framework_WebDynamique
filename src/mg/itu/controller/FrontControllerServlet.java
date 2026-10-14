@@ -1,17 +1,22 @@
 package mg.itu.controller;
 
-import jakarta.servlet.*;
-import jakarta.servlet.http.*;
-import jakarta.servlet.annotation.*;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.Part;
 import mg.itu.annotation.WebAPI;
+import mg.itu.model.MapFile;
 import mg.itu.model.ModelView;
 import mg.itu.model.UrlMappingModel;
 import mg.itu.model.UrlMethod;
@@ -19,6 +24,30 @@ import mg.itu.model.ApplicationContext;
 import mg.itu.utils.Utils;
 
 public class FrontControllerServlet extends HttpServlet {
+
+        private static Map<String, List<MapFile>> extractFileMap(HttpServletRequest request) throws Exception {
+                Map<String, List<MapFile>> files = new HashMap<>();
+
+                String contentType = request.getContentType();
+                if (contentType == null || !contentType.toLowerCase().startsWith("multipart/")) {
+                        return files;
+                }
+
+                for (Part part : request.getParts()) {
+                        String submittedFileName = part.getSubmittedFileName();
+                        if (submittedFileName == null || submittedFileName.isEmpty()) {
+                                continue;
+                        }
+
+                        String extension = Utils.extractExtension(submittedFileName);
+                        byte[] contenu = part.getInputStream().readAllBytes();
+                        MapFile mapFile = new MapFile(submittedFileName, extension, contenu);
+
+                        files.computeIfAbsent(part.getName(), k -> new ArrayList<>()).add(mapFile);
+                }
+
+                return files;
+        }
 
         private void processRequest(HttpServletRequest request, HttpServletResponse response)
                         throws ServletException, IOException {
@@ -50,10 +79,11 @@ public class FrontControllerServlet extends HttpServlet {
                                                         "Aucun bean trouvé pour le contrôleur: " + controllerName);
                                 }
 
-                               
-                                        Object[] args = Utils.resolveArguments(mapping.getMethod(),
-                                                        request.getParameterMap());
-                                        Object result = mapping.getMethod().invoke(controller, args);
+                                Map<String, String[]> parameterMap = request.getParameterMap();
+                                Map<String, List<MapFile>> fileMap = extractFileMap(request);
+
+                                Object[] args = Utils.resolveArguments(mapping.getMethod(), parameterMap, fileMap);
+                                Object result = mapping.getMethod().invoke(controller, args);
 
                                 if (mapping.getMethod().isAnnotationPresent(WebAPI.class)) {
                                         response.setContentType("application/json;charset=UTF-8");
@@ -84,7 +114,7 @@ public class FrontControllerServlet extends HttpServlet {
                                         return;
 
                                 } else if (result == null) {
-                                        return; // si void
+                                        return;
                                 } else {
                                         response.setContentType("text/plain;charset=UTF-8");
                                         PrintWriter out = response.getWriter();

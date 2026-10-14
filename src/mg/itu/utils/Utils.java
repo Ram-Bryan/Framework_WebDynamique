@@ -1,28 +1,36 @@
 package mg.itu.utils;
 
 import java.io.File;
+import java.io.IOException;
 import java.lang.annotation.Annotation;
-import java.lang.reflect.Method;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
 import mg.itu.annotation.Controller;
 import mg.itu.annotation.UrlMapping;
+import mg.itu.model.ApplicationContext;
+import mg.itu.model.MapFile;
+import mg.itu.config.FrameworkConfig;
 import mg.itu.model.UrlMappingModel;
 import mg.itu.model.UrlMethod;
-import mg.itu.model.ApplicationContext;
 
 public class Utils {
+    
 
     public static void findWithAnnotation(
             Class<? extends Annotation> annotation,
@@ -223,41 +231,48 @@ public class Utils {
     }
 
     public static Object[] resolveArguments(Method method, Map<String, String[]> parameterMap) {
+        return resolveArguments(method, parameterMap, Collections.emptyMap());
+    }
+
+    public static Object[] resolveArguments(
+            Method method,
+            Map<String, String[]> parameterMap,
+            Map<String, List<MapFile>> fileMap) {
+        if (fileMap == null) {
+            fileMap = Collections.emptyMap();
+        }
         Parameter[] params = method.getParameters();
         Object[] args = new Object[params.length];
 
         for (int i = 0; i < params.length; i++) {
 
             Parameter parameter = params[i];
-
             String parameterName = parameter.getName();
             Class<?> parameterType = parameter.getType();
 
-            if (List.class.isAssignableFrom(parameterType)) {
-                Class<?> elementType = getListElementType(parameter.getParameterizedType());
-                args[i] = bindList(parameterName, elementType, parameterMap);
+            if (parameterType == MapFile.class) {
+                List<MapFile> files = fileMap.get(parameterName);
+                args[i] = (files != null && !files.isEmpty()) ? files.get(0) : null;
                 continue;
             }
 
-            // Type simple
-            if (isSimpleType(parameterType)) {
-
-                String[] values = parameterMap.get(parameterName);
-
-                String rawValue = null;
-
-                if (values != null && values.length > 0) {
-                    rawValue = values[0];
+            if (List.class.isAssignableFrom(parameterType)) {
+                Class<?> elementType = getListElementType(parameter.getParameterizedType());
+                if (elementType == MapFile.class) {
+                    args[i] = fileMap.getOrDefault(parameterName, new ArrayList<>());
+                } else {
+                    args[i] = bindList(parameterName, elementType, parameterMap, fileMap);
                 }
-
-                args[i] = convert(rawValue, parameterType);
-
+                continue;
             }
-            // Objet complexe
-            else {
 
+            if (isSimpleType(parameterType)) {
+                String[] values = parameterMap.get(parameterName);
+                String rawValue = (values != null && values.length > 0) ? values[0] : null;
+                args[i] = convert(rawValue, parameterType);
+            } else {
                 try {
-                    args[i] = bindObject(parameterType, parameterMap);
+                    args[i] = bindObject(parameterType, parameterMap, fileMap);
                 } catch (Exception e) {
                     throw new RuntimeException("Failed to bind object for parameter: " + parameterName, e);
                 }
@@ -280,11 +295,12 @@ public class Utils {
     private static List<Object> bindList(
             String parameterName,
             Class<?> elementType,
-            Map<String, String[]> parameterMap) {
+            Map<String, String[]> parameterMap,
+            Map<String, List<MapFile>> fileMap) {
         if (isSimpleType(elementType)) {
             return bindSimpleList(parameterName, elementType, parameterMap);
         }
-        return bindObjectList(parameterName, elementType, parameterMap);
+        return bindObjectList(parameterName, elementType, parameterMap, fileMap);
     }
 
     private static List<Object> bindSimpleList(
@@ -305,21 +321,24 @@ public class Utils {
     private static List<Object> bindObjectList(
             String parameterName,
             Class<?> elementType,
-            Map<String, String[]> parameterMap) {
+            Map<String, String[]> parameterMap,
+            Map<String, List<MapFile>> fileMap) {
         List<Object> result = new ArrayList<>();
         int index = 0;
 
         while (true) {
-            String prefix = parameterName + "[" + index + "].";
+            String prefix = parameterName + "[" + index + "]" + ".";
             boolean hasAnyFieldForThisIndex = parameterMap.keySet().stream()
-                    .anyMatch(key -> key.startsWith(prefix));
+                    .anyMatch(key -> key.startsWith(prefix))
+                    || fileMap.keySet().stream()
+                            .anyMatch(key -> key.startsWith(prefix));
 
             if (!hasAnyFieldForThisIndex) {
                 break;
             }
 
             try {
-                Object element = bindObjectWithPrefix(elementType, parameterMap, prefix);
+                Object element = bindObjectWithPrefix(elementType, parameterMap, fileMap, prefix);
                 result.add(element);
             } catch (Exception e) {
                 throw new RuntimeException("Failed to bind list element at index " + index, e);
@@ -334,6 +353,7 @@ public class Utils {
     private static Object bindObjectWithPrefix(
             Class<?> targetType,
             Map<String, String[]> parameterMap,
+            Map<String, List<MapFile>> fileMap,
             String prefix) throws Exception {
         Object object = targetType.getDeclaredConstructor().newInstance();
 
@@ -342,9 +362,20 @@ public class Utils {
             Class<?> fieldType = field.getType();
             Object value;
 
-            if (List.class.isAssignableFrom(fieldType)) {
+            if (fieldType == MapFile.class) {
+                List<MapFile> files = fileMap.get(fieldPrefix);
+                if (files == null || files.isEmpty()) {
+                    continue;
+                }
+                value = files.get(0);
+
+            } else if (List.class.isAssignableFrom(fieldType)) {
                 Class<?> elementType = getListElementType(field.getGenericType());
-                value = bindList(fieldPrefix, elementType, parameterMap);
+                if (elementType == MapFile.class) {
+                    value = fileMap.getOrDefault(fieldPrefix, new ArrayList<>());
+                } else {
+                    value = bindList(fieldPrefix, elementType, parameterMap, fileMap);
+                }
 
             } else if (isSimpleType(fieldType)) {
                 String[] values = parameterMap.get(fieldPrefix);
@@ -356,11 +387,13 @@ public class Utils {
             } else {
                 String nestedPrefix = fieldPrefix + ".";
                 boolean hasNestedFields = parameterMap.keySet().stream()
-                        .anyMatch(key -> key.startsWith(nestedPrefix));
+                        .anyMatch(key -> key.startsWith(nestedPrefix))
+                        || fileMap.keySet().stream()
+                                .anyMatch(key -> key.startsWith(nestedPrefix));
                 if (!hasNestedFields) {
                     continue;
                 }
-                value = bindObjectWithPrefix(fieldType, parameterMap, nestedPrefix);
+                value = bindObjectWithPrefix(fieldType, parameterMap, fileMap, nestedPrefix);
             }
 
             field.setAccessible(true);
@@ -397,7 +430,39 @@ public class Utils {
     public static Object bindObject(
             Class<?> targetType,
             Map<String, String[]> parameterMap) throws Exception {
-        return bindObjectWithPrefix(targetType, parameterMap, "");
+        return bindObject(targetType, parameterMap, Collections.emptyMap());
+    }
+
+    public static Object bindObject(
+            Class<?> targetType,
+            Map<String, String[]> parameterMap,
+            Map<String, List<MapFile>> fileMap) throws Exception {
+        return bindObjectWithPrefix(targetType, parameterMap, fileMap, "");
+    }
+
+    public static String extractExtension(String fileName) {
+        if (fileName == null) {
+            return "";
+        }
+        int lastDot = fileName.lastIndexOf('.');
+        if (lastDot == -1 || lastDot == fileName.length() - 1) {
+            return "";
+        }
+        return fileName.substring(lastDot + 1);
+    }
+
+    public static void saveFile(MapFile file, String uploadDir) throws IOException {
+        if (file == null || uploadDir == null || uploadDir.isEmpty()) {
+            return;
+        }
+        Path destination = Paths.get(uploadDir, file.getNomFichier());
+        Files.createDirectories(destination.getParent());
+        Files.write(destination, file.getContenu());
+    }
+
+    public static void saveFile(MapFile file) throws IOException {
+        String uploadDir = FrameworkConfig.getUploadDir();
+        saveFile(file, uploadDir);
     }
 
     public static Object convert(String rawValue, Class<?> targetType) {

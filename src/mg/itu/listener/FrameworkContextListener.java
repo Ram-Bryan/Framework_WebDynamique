@@ -1,5 +1,6 @@
 package mg.itu.listener;
 
+import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -7,10 +8,11 @@ import jakarta.servlet.ServletContext;
 import jakarta.servlet.ServletContextEvent;
 import jakarta.servlet.ServletContextListener;
 
+import mg.itu.model.ApplicationContext;
 import mg.itu.model.UrlMappingModel;
 import mg.itu.model.UrlMethod;
-import mg.itu.model.ApplicationContext;
 import mg.itu.utils.Utils;
+import mg.itu.config.FrameworkConfig;
 
 public class FrameworkContextListener implements ServletContextListener {
 
@@ -24,6 +26,18 @@ public class FrameworkContextListener implements ServletContextListener {
             String packageName = context.getInitParameter("package.controller");
             String viewPrefix = context.getInitParameter("view-prefix");
             String viewSuffix = context.getInitParameter("view-suffix");
+
+            // le directory qu'on va uploader
+            String uploadDir = context.getInitParameter("upload-dir");
+
+            if (uploadDir != null && !uploadDir.isEmpty()) {
+                File dir = new File(uploadDir);
+                if (!dir.exists()) {
+                    dir.mkdirs();
+                }
+                context.setAttribute("upload-dir", uploadDir);
+                FrameworkConfig.setUploadDir(uploadDir);
+            }
 
             // Creer le contenaire
             ApplicationContext appContext = new ApplicationContext();
