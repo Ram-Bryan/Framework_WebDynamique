@@ -10,6 +10,7 @@ import java.util.Map;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import jakarta.servlet.annotation.MultipartConfig;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
@@ -23,6 +24,7 @@ import mg.itu.model.UrlMethod;
 import mg.itu.model.ApplicationContext;
 import mg.itu.utils.Utils;
 
+@MultipartConfig
 public class FrontControllerServlet extends HttpServlet {
 
         private static Map<String, List<MapFile>> extractFileMap(HttpServletRequest request) throws Exception {
@@ -43,7 +45,17 @@ public class FrontControllerServlet extends HttpServlet {
                         byte[] contenu = part.getInputStream().readAllBytes();
                         MapFile mapFile = new MapFile(submittedFileName, extension, contenu);
 
-                        files.computeIfAbsent(part.getName(), k -> new ArrayList<>()).add(mapFile);
+                        if (!Utils.checkProperties(mapFile)) {
+                                throw new ServletException("Fichier trop volumineux: " + submittedFileName);
+                        }
+
+                        String fieldName = part.getName();
+                        List<MapFile> fieldFiles = files.get(fieldName);
+                        if (fieldFiles == null) {
+                                fieldFiles = new ArrayList<>();
+                                files.put(fieldName, fieldFiles);
+                        }
+                        fieldFiles.add(mapFile);
                 }
 
                 return files;

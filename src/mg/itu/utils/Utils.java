@@ -1,7 +1,6 @@
 package mg.itu.utils;
 
 import java.io.File;
-import java.io.IOException;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -10,9 +9,6 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.net.URL;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -23,13 +19,29 @@ import java.util.Map;
 
 import mg.itu.annotation.Controller;
 import mg.itu.annotation.UrlMapping;
+import mg.itu.config.FrameworkConfig;
 import mg.itu.model.ApplicationContext;
 import mg.itu.model.MapFile;
-import mg.itu.config.FrameworkConfig;
 import mg.itu.model.UrlMappingModel;
 import mg.itu.model.UrlMethod;
 
+import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.Files;
+
+
 public class Utils {
+
+    public static boolean checkProperties(MapFile mapFile) {
+        if (mapFile == null || mapFile.getContenu() == null) {
+            return false;
+        }
+        if (mapFile.getContenu().length > FrameworkConfig.getMaxFileSize()) {
+            return false;
+        }
+        return true;
+    }
     
 
     public static void findWithAnnotation(
@@ -175,15 +187,6 @@ public class Utils {
         }
     }
 
-    public static void classesToString(
-            List<Class<?>> classes,
-            List<String> names) {
-
-        for (Class<?> classe : classes) {
-            names.add(classe.getSimpleName());
-        }
-    }
-
     public static Object getSpringWebApplicationContext(Object servletContext) {
         try {
             Class<?> contextClass = Class.forName("org.springframework.web.context.WebApplicationContext");
@@ -219,7 +222,6 @@ public class Utils {
                                 .getMethod("autowireBean", Object.class)
                                 .invoke(autowireCapableBeanFactory, instance);
                     } catch (Exception ignored) {
-                        // Spring may not be available or may not be configured in this context.
                     }
                 }
 
@@ -228,10 +230,6 @@ public class Utils {
                 throw new RuntimeException("Failed to instantiate bean: " + controller.getName(), e);
             }
         }
-    }
-
-    public static Object[] resolveArguments(Method method, Map<String, String[]> parameterMap) {
-        return resolveArguments(method, parameterMap, Collections.emptyMap());
     }
 
     public static Object[] resolveArguments(
@@ -425,12 +423,6 @@ public class Utils {
                 || type == BigDecimal.class
                 || type == LocalDate.class
                 || type == LocalDateTime.class;
-    }
-
-    public static Object bindObject(
-            Class<?> targetType,
-            Map<String, String[]> parameterMap) throws Exception {
-        return bindObject(targetType, parameterMap, Collections.emptyMap());
     }
 
     public static Object bindObject(

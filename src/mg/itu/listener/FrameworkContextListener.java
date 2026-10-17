@@ -7,11 +7,9 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 
-import jakarta.servlet.MultipartConfigElement;
 import jakarta.servlet.ServletContext;
 import jakarta.servlet.ServletContextEvent;
 import jakarta.servlet.ServletContextListener;
-import jakarta.servlet.ServletRegistration;
 
 import mg.itu.config.FrameworkConfig;
 import mg.itu.model.ApplicationContext;
@@ -20,18 +18,6 @@ import mg.itu.model.UrlMethod;
 import mg.itu.utils.Utils;
 
 public class FrameworkContextListener implements ServletContextListener {
-
-    private static long parseLongProperty(Properties props, String key, long defaultValue) {
-        String raw = props.getProperty(key);
-        if (raw == null || raw.trim().isEmpty()) {
-            return defaultValue;
-        }
-        try {
-            return Long.parseLong(raw.trim());
-        } catch (NumberFormatException e) {
-            throw new RuntimeException("Valeur invalide pour '" + key + "': " + raw, e);
-        }
-    }
 
     @Override
     public void contextInitialized(ServletContextEvent sce) {
@@ -62,24 +48,13 @@ public class FrameworkContextListener implements ServletContextListener {
             context.setAttribute("upload-dir", uploadDir);
             FrameworkConfig.setUploadDir(uploadDir);
 
-            long maxFileSize = parseLongProperty(props, "max-file-size", 10L * 1024L * 1024L);
-            long maxRequestSize = parseLongProperty(props, "max-request-size", 50L * 1024L * 1024L);
-            long fileSizeThreshold = parseLongProperty(props, "file-size-threshold", 1024L * 1024L);
+            long maxFileSize = Long.parseLong(props.getProperty("max-file-size"));
+            long maxRequestSize = Long.parseLong(props.getProperty("max-request-size"));
+            long fileSizeThreshold = Long.parseLong(props.getProperty("file-size-threshold"));
 
             FrameworkConfig.setMaxFileSize(maxFileSize);
             FrameworkConfig.setMaxRequestSize(maxRequestSize);
             FrameworkConfig.setFileSizeThreshold(fileSizeThreshold);
-
-            ServletRegistration registration = context.getServletRegistration("FrontControllerServlet");
-            if (registration != null) {
-                MultipartConfigElement multipartConfig = new MultipartConfigElement(
-                        null,
-                        FrameworkConfig.getMaxFileSize(),
-                        FrameworkConfig.getMaxRequestSize(),
-                        (int) FrameworkConfig.getFileSizeThreshold()
-                );
-                registration.setMultipartConfig(multipartConfig);
-            }
 
             String packageName = context.getInitParameter("package.controller");
             String viewPrefix = context.getInitParameter("view-prefix");

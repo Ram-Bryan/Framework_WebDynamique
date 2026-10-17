@@ -41,4 +41,5 @@ public final class FrameworkConfig {
     public static long getFileSizeThreshold() {
         return fileSizeThreshold;
     }
+
 }
