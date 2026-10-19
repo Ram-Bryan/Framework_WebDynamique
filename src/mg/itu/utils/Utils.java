@@ -22,6 +22,7 @@ import mg.itu.annotation.UrlMapping;
 import mg.itu.config.FrameworkConfig;
 import mg.itu.model.ApplicationContext;
 import mg.itu.model.MapFile;
+import mg.itu.model.MySession;
 import mg.itu.model.UrlMappingModel;
 import mg.itu.model.UrlMethod;
 
@@ -235,7 +236,8 @@ public class Utils {
     public static Object[] resolveArguments(
             Method method,
             Map<String, String[]> parameterMap,
-            Map<String, List<MapFile>> fileMap) {
+            Map<String, List<MapFile>> fileMap,
+            MySession session) {
         if (fileMap == null) {
             fileMap = Collections.emptyMap();
         }
@@ -247,6 +249,11 @@ public class Utils {
             Parameter parameter = params[i];
             String parameterName = parameter.getName();
             Class<?> parameterType = parameter.getType();
+
+            if (parameterType == MySession.class) {
+                args[i] = session;
+                continue;
+            }
 
             if (parameterType == MapFile.class) {
                 List<MapFile> files = fileMap.get(parameterName);

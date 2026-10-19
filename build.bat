@@ -37,7 +37,7 @@ if not defined JAVA_FILES (
 
 REM Compiler
 echo Compilation en cours...
-javac -cp "!CP!" -d %BUILD_DIR%\classes !JAVA_FILES!
+javac -parameters -cp "!CP!" -d %BUILD_DIR%\classes !JAVA_FILES!
 
 if %errorlevel% equ 0 (
     echo Compilation reussie !
