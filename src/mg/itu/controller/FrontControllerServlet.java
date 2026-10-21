@@ -5,6 +5,7 @@ import java.io.PrintWriter;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Enumeration;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -42,6 +43,10 @@ public class FrontControllerServlet extends HttpServlet {
                         String submittedFileName = part.getSubmittedFileName();
                         if (submittedFileName == null || submittedFileName.isEmpty()) {
                                 continue;
+                        }
+
+                        if (part.getSize() > mg.itu.config.FrameworkConfig.getMaxFileSize()) {
+                                throw new ServletException("Fichier trop volumineux: " + submittedFileName);
                         }
 
                         String extension = Utils.extractExtension(submittedFileName);
@@ -96,12 +101,28 @@ public class FrontControllerServlet extends HttpServlet {
 
                                 Map<String, String[]> parameterMap = request.getParameterMap();
                                 Map<String, List<MapFile>> fileMap = extractFileMap(request);
-                                HttpSession httpSession = request.getSession(true);
-                                MySession mySession = buildSession(httpSession);
+
+                                boolean needsSession = false;
+                                for (Class<?> type : mapping.getMethod().getParameterTypes()) {
+                                        if (type == MySession.class) {
+                                                needsSession = true;
+                                                break;
+                                        }
+                                }
+
+                                HttpSession httpSession = null;
+                                MySession mySession = null;
+                                if (needsSession) {
+                                        httpSession = request.getSession(true);
+                                        mySession = buildSession(httpSession);
+                                }
 
                                 Object[] args = Utils.resolveArguments(mapping.getMethod(), parameterMap, fileMap, mySession);
                                 Object result = mapping.getMethod().invoke(controller, args);
-                                syncSession(httpSession, mySession);
+
+                                if (needsSession) {
+                                        syncSession(httpSession, mySession);
+                                }
 
                                 if (mapping.getMethod().isAnnotationPresent(WebAPI.class)) {
                                         response.setContentType("application/json;charset=UTF-8");
@@ -166,18 +187,15 @@ public class FrontControllerServlet extends HttpServlet {
         }
 
         private void syncSession(HttpSession httpSession, MySession mySession) {
-                List<String> attributes = new ArrayList<>();
+                Map<String, Object> current = mySession.getAllSessions();
 
-                Enumeration<String> attributeNames = httpSession.getAttributeNames();
-                while (attributeNames.hasMoreElements()) {
-                        attributes.add(attributeNames.nextElement());
+                for (String name : Collections.list(httpSession.getAttributeNames())) {
+                        if (!current.containsKey(name)) {
+                                httpSession.removeAttribute(name);
+                        }
                 }
 
-                for (String attributeName : attributes) {
-                        httpSession.removeAttribute(attributeName);
-                }
-
-                for (Map.Entry<String, Object> entry : mySession.getAllSessions().entrySet()) {
+                for (Map.Entry<String, Object> entry : current.entrySet()) {
                         httpSession.setAttribute(entry.getKey(), entry.getValue());
                 }
         }
