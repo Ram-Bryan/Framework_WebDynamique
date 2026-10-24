@@ -101,18 +101,11 @@ public class FrontControllerServlet extends HttpServlet {
 
                                 Map<String, String[]> parameterMap = request.getParameterMap();
                                 Map<String, List<MapFile>> fileMap = extractFileMap(request);
-
-                                boolean needsSession = false;
-                                for (Class<?> type : mapping.getMethod().getParameterTypes()) {
-                                        if (type == MySession.class) {
-                                                needsSession = true;
-                                                break;
-                                        }
-                                }
-
                                 HttpSession httpSession = null;
                                 MySession mySession = null;
-                                if (needsSession) {
+
+                                boolean besoinSession = Utils.besoinSession(mapping);
+                                if (besoinSession) {
                                         httpSession = request.getSession(true);
                                         mySession = buildSession(httpSession);
                                 }
@@ -120,7 +113,7 @@ public class FrontControllerServlet extends HttpServlet {
                                 Object[] args = Utils.resolveArguments(mapping.getMethod(), parameterMap, fileMap, mySession);
                                 Object result = mapping.getMethod().invoke(controller, args);
 
-                                if (needsSession) {
+                                if (besoinSession) {
                                         syncSession(httpSession, mySession);
                                 }
 

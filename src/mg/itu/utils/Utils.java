@@ -31,7 +31,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.Files;
 
-
 public class Utils {
 
     public static boolean checkProperties(MapFile mapFile) {
@@ -43,7 +42,6 @@ public class Utils {
         }
         return true;
     }
-    
 
     public static void findWithAnnotation(
             Class<? extends Annotation> annotation,
@@ -462,6 +460,18 @@ public class Utils {
     public static void saveFile(MapFile file) throws IOException {
         String uploadDir = FrameworkConfig.getUploadDir();
         saveFile(file, uploadDir);
+    }
+
+    public static boolean besoinSession(UrlMappingModel mapping) {
+        boolean needsSession = false;
+        for (Class<?> type : mapping.getMethod().getParameterTypes()) {
+            if (type == MySession.class) {
+                needsSession = true;
+                break;
+            }
+        }
+
+        return needsSession;
     }
 
     public static Object convert(String rawValue, Class<?> targetType) {
