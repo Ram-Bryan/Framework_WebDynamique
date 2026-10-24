@@ -29,7 +29,7 @@ conclusion
 Creer une classe modele:
 MapFile: nom du fichier, extension, bytes[]
 Instancer dans le framework: si match input + rectoCIN + field de l'objet, avec un type MapFile dans le filed --> instance MapFile(nom, extension, bytes[])
-
+8;
 
 Dans le web.xml on met;
 <context-param>

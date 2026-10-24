@@ -3,7 +3,9 @@ package mg.itu.controller;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.lang.reflect.InvocationTargetException;
+import java.util.Enumeration;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -15,10 +17,12 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import jakarta.servlet.http.Part;
 import mg.itu.annotation.WebAPI;
 import mg.itu.model.MapFile;
 import mg.itu.model.ModelView;
+import mg.itu.model.MySession;
 import mg.itu.model.UrlMappingModel;
 import mg.itu.model.UrlMethod;
 import mg.itu.model.ApplicationContext;
@@ -39,6 +43,10 @@ public class FrontControllerServlet extends HttpServlet {
                         String submittedFileName = part.getSubmittedFileName();
                         if (submittedFileName == null || submittedFileName.isEmpty()) {
                                 continue;
+                        }
+
+                        if (part.getSize() > mg.itu.config.FrameworkConfig.getMaxFileSize()) {
+                                throw new ServletException("Fichier trop volumineux: " + submittedFileName);
                         }
 
                         String extension = Utils.extractExtension(submittedFileName);
@@ -93,9 +101,21 @@ public class FrontControllerServlet extends HttpServlet {
 
                                 Map<String, String[]> parameterMap = request.getParameterMap();
                                 Map<String, List<MapFile>> fileMap = extractFileMap(request);
+                                HttpSession httpSession = null;
+                                MySession mySession = null;
 
-                                Object[] args = Utils.resolveArguments(mapping.getMethod(), parameterMap, fileMap);
+                                boolean besoinSession = Utils.besoinSession(mapping);
+                                if (besoinSession) {
+                                        httpSession = request.getSession(true);
+                                        mySession = buildSession(httpSession);
+                                }
+
+                                Object[] args = Utils.resolveArguments(mapping.getMethod(), parameterMap, fileMap, mySession);
                                 Object result = mapping.getMethod().invoke(controller, args);
+
+                                if (besoinSession) {
+                                        syncSession(httpSession, mySession);
+                                }
 
                                 if (mapping.getMethod().isAnnotationPresent(WebAPI.class)) {
                                         response.setContentType("application/json;charset=UTF-8");
@@ -144,6 +164,32 @@ public class FrontControllerServlet extends HttpServlet {
                         response.sendError(HttpServletResponse.SC_NOT_FOUND,
                                         "No route found for " + url);
                         return;
+                }
+        }
+
+        private MySession buildSession(HttpSession httpSession) {
+                Map<String, Object> values = new HashMap<>();
+
+                Enumeration<String> attributeNames = httpSession.getAttributeNames();
+                while (attributeNames.hasMoreElements()) {
+                        String attributeName = attributeNames.nextElement();
+                        values.put(attributeName, httpSession.getAttribute(attributeName));
+                }
+
+                return new MySession(values);
+        }
+
+        private void syncSession(HttpSession httpSession, MySession mySession) {
+                Map<String, Object> current = mySession.getAllSessions();
+
+                for (String name : Collections.list(httpSession.getAttributeNames())) {
+                        if (!current.containsKey(name)) {
+                                httpSession.removeAttribute(name);
+                        }
+                }
+
+                for (Map.Entry<String, Object> entry : current.entrySet()) {
+                        httpSession.setAttribute(entry.getKey(), entry.getValue());
                 }
         }
 

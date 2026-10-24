@@ -22,6 +22,7 @@ import mg.itu.annotation.UrlMapping;
 import mg.itu.config.FrameworkConfig;
 import mg.itu.model.ApplicationContext;
 import mg.itu.model.MapFile;
+import mg.itu.model.MySession;
 import mg.itu.model.UrlMappingModel;
 import mg.itu.model.UrlMethod;
 
@@ -29,7 +30,6 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.Files;
-
 
 public class Utils {
 
@@ -42,7 +42,6 @@ public class Utils {
         }
         return true;
     }
-    
 
     public static void findWithAnnotation(
             Class<? extends Annotation> annotation,
@@ -235,7 +234,8 @@ public class Utils {
     public static Object[] resolveArguments(
             Method method,
             Map<String, String[]> parameterMap,
-            Map<String, List<MapFile>> fileMap) {
+            Map<String, List<MapFile>> fileMap,
+            MySession session) {
         if (fileMap == null) {
             fileMap = Collections.emptyMap();
         }
@@ -247,6 +247,11 @@ public class Utils {
             Parameter parameter = params[i];
             String parameterName = parameter.getName();
             Class<?> parameterType = parameter.getType();
+
+            if (parameterType == MySession.class) {
+                args[i] = session;
+                continue;
+            }
 
             if (parameterType == MapFile.class) {
                 List<MapFile> files = fileMap.get(parameterName);
@@ -455,6 +460,18 @@ public class Utils {
     public static void saveFile(MapFile file) throws IOException {
         String uploadDir = FrameworkConfig.getUploadDir();
         saveFile(file, uploadDir);
+    }
+
+    public static boolean besoinSession(UrlMappingModel mapping) {
+        boolean needsSession = false;
+        for (Class<?> type : mapping.getMethod().getParameterTypes()) {
+            if (type == MySession.class) {
+                needsSession = true;
+                break;
+            }
+        }
+
+        return needsSession;
     }
 
     public static Object convert(String rawValue, Class<?> targetType) {
