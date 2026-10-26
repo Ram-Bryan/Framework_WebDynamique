@@ -17,7 +17,7 @@ avant: variable pour stocker la session de l'utilisateur
 mtn: 
 ajouter variable pour role de l'utilisateru conencte
 @Role
-Ou reutiliser @Auth 
+On peut reutiliser @Auth 
 methode d'action avec plusieur roles ==> est ce que la variable role existe, prendr el eno de la varibale, estce que ca exits dans session => recuperer valeur et regarder les param de l'annotation, si y a alors excute sinon, no
 
 On peut ne pas mettre de @Auth, mais implicitement il doti tujours etre conencte avant d appeler une methode d action

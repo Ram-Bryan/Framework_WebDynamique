@@ -28,6 +28,7 @@ import mg.itu.model.UrlMappingModel;
 import mg.itu.model.UrlMethod;
 import mg.itu.model.ApplicationContext;
 import mg.itu.utils.Utils;
+import mg.itu.config.*;
 
 @MultipartConfig
 public class FrontControllerServlet extends HttpServlet {
@@ -55,7 +56,7 @@ public class FrontControllerServlet extends HttpServlet {
                                 continue;
                         }
 
-                        if (part.getSize() > mg.itu.config.FrameworkConfig.getMaxFileSize()) {
+                        if (part.getSize() > FrameworkConfig.getMaxFileSize()) {
                                 throw new ServletException("Fichier trop volumineux: " + submittedFileName);
                         }
 
