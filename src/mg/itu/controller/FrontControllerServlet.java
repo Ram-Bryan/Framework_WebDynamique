@@ -19,6 +19,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import jakarta.servlet.http.Part;
+import mg.itu.annotation.Auth;
 import mg.itu.annotation.WebAPI;
 import mg.itu.model.MapFile;
 import mg.itu.model.ModelView;
@@ -30,6 +31,15 @@ import mg.itu.utils.Utils;
 
 @MultipartConfig
 public class FrontControllerServlet extends HttpServlet {
+
+        private boolean isAuthenticated(HttpServletRequest request) throws ServletException {
+                String key = (String) getServletContext().getAttribute("auth-session-key");
+                if (key == null || key.isBlank()) {
+                        throw new ServletException("@Auth utilisé mais 'auth-session-key' n'est pas configuré dans web.xml");
+                }
+                HttpSession session = request.getSession(false);
+                return session != null && session.getAttribute(key) != null;
+        }
 
         private static Map<String, List<MapFile>> extractFileMap(HttpServletRequest request) throws Exception {
                 Map<String, List<MapFile>> files = new HashMap<>();
@@ -91,6 +101,12 @@ public class FrontControllerServlet extends HttpServlet {
 
                         try {
                                 UrlMappingModel mapping = routes.get(urlMethod);
+
+                                if (mapping.getMethod().isAnnotationPresent(Auth.class) && !isAuthenticated(request)) {
+                                        response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Authentification requise");
+                                        return;
+                                }
+
                                 String controllerName = mapping.getController().getSimpleName();
                                 Object controller = appContext.getBean(controllerName);
 
