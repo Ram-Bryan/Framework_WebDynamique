@@ -5,3 +5,4 @@ Par configuration, ity ny anarana anle variable de Session.
 Dans web.xml, init param --> variable de la session.
 mEttre dans ServletContext. 
 Si authentifie, setttribute avec variable
+

@@ -59,6 +59,7 @@ public class FrameworkContextListener implements ServletContextListener {
             String packageName = context.getInitParameter("package.controller");
             String viewPrefix = context.getInitParameter("view-prefix");
             String viewSuffix = context.getInitParameter("view-suffix");
+            String authSessionKey = context.getInitParameter("auth-session-key");
 
             ApplicationContext appContext = new ApplicationContext();
 
@@ -75,6 +76,7 @@ public class FrameworkContextListener implements ServletContextListener {
 
             context.setAttribute("view-prefix", viewPrefix);
             context.setAttribute("view-suffix", viewSuffix);
+            context.setAttribute("auth-session-key", authSessionKey);
 
         } catch (Exception e) {
 
