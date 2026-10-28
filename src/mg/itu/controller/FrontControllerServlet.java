@@ -29,11 +29,12 @@ import mg.itu.model.UrlMethod;
 import mg.itu.model.ApplicationContext;
 import mg.itu.utils.Utils;
 import mg.itu.config.*;
+import java.lang.reflect.*;
 
 @MultipartConfig
 public class FrontControllerServlet extends HttpServlet {
 
-        private int checkAuth(HttpServletRequest request, java.lang.reflect.Method method) throws ServletException {
+        private int checkAuth(HttpServletRequest request, Method method) throws ServletException {
                 Auth auth = method.getAnnotation(Auth.class);
                 if (auth == null) {
                         return HttpServletResponse.SC_OK;
