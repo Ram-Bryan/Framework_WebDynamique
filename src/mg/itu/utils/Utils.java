@@ -200,6 +200,7 @@ public class Utils {
         }
     }
 
+    /* sptint 11. Le sprint 11 (singleton de controller) a deja ete implemnter depuis le sprint 5 bis */
     public static void scanAndInstantiateBeans(
             String packageName,
             ApplicationContext appContext,

@@ -3,6 +3,7 @@ package mg.itu.model;
 import java.util.HashMap;
 import java.util.Map;
 
+/* sptint 11. Le sprint 11 (singleton de controller) a deja ete implemnter depuis le sprint 5 bis */
 public class ApplicationContext {
     private Map<String, Object> beans = new HashMap<>();
 
