@@ -29,9 +29,49 @@ import mg.itu.model.UrlMethod;
 import mg.itu.model.ApplicationContext;
 import mg.itu.utils.Utils;
 import mg.itu.config.*;
+import java.lang.reflect.*;
 
 @MultipartConfig
 public class FrontControllerServlet extends HttpServlet {
+
+        private int checkAuth(HttpServletRequest request, Method method) throws ServletException {
+                Auth auth = method.getAnnotation(Auth.class);
+                if (auth == null) {
+                        return HttpServletResponse.SC_OK;
+                }
+
+                String authKey = (String) getServletContext().getAttribute("auth-session-key");
+                if (authKey == null || authKey.isBlank()) {
+                        throw new ServletException("@Auth utilisé mais 'auth-session-key' n'est pas configuré");
+                }
+
+                HttpSession session = request.getSession(false);
+                if (session == null || session.getAttribute(authKey) == null) {
+                        return HttpServletResponse.SC_UNAUTHORIZED;
+                }
+
+                String[] allowedRoles = auth.roles();
+                if (allowedRoles == null || allowedRoles.length == 0) {
+                        return HttpServletResponse.SC_OK;
+                }
+
+                String roleKey = (String) getServletContext().getAttribute("role-session-key");
+                if (roleKey == null || roleKey.isBlank()) {
+                        throw new ServletException("@Auth(roles) utilisé mais 'role-session-key' n'est pas configuré");
+                }
+
+                Object userRole = session.getAttribute(roleKey);
+                if (userRole == null) {
+                        return HttpServletResponse.SC_FORBIDDEN;
+                }
+
+                for (String role : allowedRoles) {
+                        if (role.equals(userRole.toString())) {
+                                return HttpServletResponse.SC_OK;
+                        }
+                }
+                return HttpServletResponse.SC_FORBIDDEN;
+        }
 
         private boolean isAuthenticated(HttpServletRequest request) throws ServletException {
                 String key = (String) getServletContext().getAttribute("auth-session-key");
@@ -103,8 +143,11 @@ public class FrontControllerServlet extends HttpServlet {
                         try {
                                 UrlMappingModel mapping = routes.get(urlMethod);
 
-                                if (mapping.getMethod().isAnnotationPresent(Auth.class) && !isAuthenticated(request)) {
-                                        response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Authentification requise");
+                                int status = checkAuth(request, mapping.getMethod());
+                                if (status != HttpServletResponse.SC_OK) {
+                                        response.sendError(status, status == HttpServletResponse.SC_UNAUTHORIZED
+                                                        ? "Authentification requise"
+                                                        : "Accès refusé : rôle insuffisant");
                                         return;
                                 }
 
