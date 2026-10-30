@@ -1,3 +1,3 @@
 Atao singleton ilay instance Controller
 Pour chaque controll
-Mettre un Map de Controller dans C
+Mettre un Map de Controller
